@@ -12,3 +12,8 @@ Utilities
 In addition to the parser, there is a command line tool which can be used to:
 
   * generate a memory report
+
+License
+-------
+
+This project is licensed under the MIT license. See the LICENSE file for details.
