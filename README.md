@@ -1,7 +1,7 @@
 rdbtools
 ========
 
-This is a parser for Redis RDB snapshot files. It is loosely based on [https://github.com/sripathikrishnan/redis-rdb-tools](redis-rdb-tools).
+This is a parser for Redis RDB snapshot files. It is loosely based on [redis-rdb-tools](https://github.com/sripathikrishnan/redis-rdb-tools).
 
 It is compatible with Redis RDB files generated since Redis 1.0 and up to the last version.
 It comes with an extensive test suite.
@@ -12,6 +12,11 @@ Utilities
 In addition to the parser, there is a command line tool which can be used to:
 
   * generate a memory report
+
+Documentation
+-------------
+
+The reference is available [here](http://godoc.org/github.com/vrischmann/rdbtools]).
 
 License
 -------
