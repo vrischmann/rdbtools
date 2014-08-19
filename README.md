@@ -33,7 +33,7 @@ In addition to the parser, there is a command line tool which can be used to:
 Documentation
 -------------
 
-The reference is available [here](http://godoc.org/github.com/vrischmann/rdbtools]).
+The reference is available [here](http://godoc.org/github.com/vrischmann/rdbtools]). Right now it's not really useful, but it will be improved.
 
 License
 -------
