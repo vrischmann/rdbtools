@@ -6,6 +6,16 @@ This is a parser for Redis RDB snapshot files. It is loosely based on [redis-rdb
 It is compatible with Redis RDB files generated since Redis 1.0 and up to the last version.
 It comes with an extensive test suite.
 
+Disclaimer
+----------
+
+Some things are not implemented:
+
+  * checksum checking
+  * keys with expire times
+
+Also, the command line tool is very basic and doesn't do a lot. If you have a feature request, please shoot me a e-mail or open a issue.
+
 Utilities
 ---------
 
