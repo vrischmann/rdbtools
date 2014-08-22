@@ -45,16 +45,36 @@ type ParserContext struct {
 }
 
 func (c *ParserContext) closeChannels() {
-	close(c.DbCh)
-	close(c.StringObjectCh)
-	close(c.ListMetadataCh)
-	close(c.ListDataCh)
-	close(c.SetMetadataCh)
-	close(c.SetDataCh)
-	close(c.HashMetadataCh)
-	close(c.HashDataCh)
-	close(c.SortedSetMetadataCh)
-	close(c.SortedSetEntriesCh)
+	if c.DbCh != nil {
+		close(c.DbCh)
+	}
+	if c.StringObjectCh != nil {
+		close(c.StringObjectCh)
+	}
+	if c.ListMetadataCh != nil {
+		close(c.ListMetadataCh)
+	}
+	if c.ListDataCh != nil {
+		close(c.ListDataCh)
+	}
+	if c.SetMetadataCh != nil {
+		close(c.SetMetadataCh)
+	}
+	if c.SetDataCh != nil {
+		close(c.SetDataCh)
+	}
+	if c.HashMetadataCh != nil {
+		close(c.HashMetadataCh)
+	}
+	if c.HashDataCh != nil {
+		close(c.HashDataCh)
+	}
+	if c.SortedSetMetadataCh != nil {
+		close(c.SortedSetMetadataCh)
+	}
+	if c.SortedSetEntriesCh != nil {
+		close(c.SortedSetEntriesCh)
+	}
 	close(c.endOfFileCh)
 }
 
@@ -164,7 +184,9 @@ func (p *Parser) readDatabase(r *bufio.Reader) error {
 		return err
 	}
 
-	p.ctx.DbCh <- int(dbNumber)
+	if p.ctx.DbCh != nil {
+		p.ctx.DbCh <- int(dbNumber)
+	}
 
 	return nil
 }

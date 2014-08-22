@@ -15,7 +15,9 @@ func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
 		return ErrUnexpectedEncodedLength
 	}
 
-	p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: l}
+	if p.ctx.HashMetadataCh != nil {
+		p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: l}
+	}
 
 	for i := int64(0); i < l; i++ {
 		entryKey, err := readString(r)
@@ -28,7 +30,9 @@ func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
 			return err
 		}
 
-		p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+		if p.ctx.HashDataCh != nil {
+			p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+		}
 	}
 
 	return nil
@@ -42,14 +46,18 @@ func (p *Parser) readHashMapInZipList(key interface{}, r *bufio.Reader) error {
 
 	var entryKey interface{} = nil
 	onLenCallback := func(length int64) error {
-		p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: length / 2}
+		if p.ctx.HashMetadataCh != nil {
+			p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: length / 2}
+		}
 		return nil
 	}
 	onElementCallback := func(e interface{}) error {
 		if entryKey == nil {
 			entryKey = e
 		} else {
-			p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: e}
+			if p.ctx.HashDataCh != nil {
+				p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: e}
+			}
 			entryKey = nil
 		}
 		return nil
@@ -107,7 +115,9 @@ func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
 	if mapLen >= 254 {
 		results = make([]StringObject, 0)
 	} else {
-		p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: int64(mapLen)}
+		if p.ctx.HashMetadataCh != nil {
+			p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: int64(mapLen)}
+		}
 	}
 
 	for b != 0xFF {
@@ -154,7 +164,9 @@ func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
 		if mapLen >= 254 {
 			results = append(results, StringObject{Key: entryKey, Value: entryValue})
 		} else {
-			p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+			if p.ctx.HashDataCh != nil {
+				p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+			}
 		}
 
 		b, err = dr.ReadByte()
@@ -164,9 +176,13 @@ func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
 	}
 
 	if mapLen >= 254 {
-		p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: int64(len(results))}
-		for _, e := range results {
-			p.ctx.HashDataCh <- e
+		if p.ctx.HashMetadataCh != nil {
+			p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: int64(len(results))}
+		}
+		if p.ctx.HashDataCh != nil {
+			for _, e := range results {
+				p.ctx.HashDataCh <- e
+			}
 		}
 	}
 
