@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+func mustParse(t *testing.T, p *Parser, r io.Reader) {
+	err := p.Parse(r)
+	if err != nil {
+		t.Fatalf("Error while parsing; err=%s", err)
+	}
+}
+
 func TestReadMagicString(t *testing.T) {
 	var buffer bytes.Buffer
 
@@ -1038,26 +1045,10 @@ func TestParse(t *testing.T) {
 	p := NewParser(ParserContext{
 		DbCh:           make(chan int, 1),
 		StringObjectCh: make(chan StringObject, 1),
-		EndOfFileCh:    make(chan struct{}, 1),
+		endOfFileCh:    make(chan struct{}, 1),
 	})
 
-	go func() {
-		v := <-p.ctx.DbCh
-		equals(t, int(0), v)
-	}()
-
-	go func() {
-		v := <-p.ctx.StringObjectCh
-		equals(t, "a", DataToString(v.Key))
-		equals(t, "foobar", DataToString(v.Value))
-	}()
-
-	go func() {
-		<-p.ctx.EndOfFileCh
-	}()
-
 	br := bufio.NewWriter(&buffer)
-
 	br.WriteString("REDIS")  // magic string
 	br.WriteString("0006")   // RDB version
 	br.WriteByte(0xFE)       // next database byte
@@ -1070,8 +1061,30 @@ func TestParse(t *testing.T) {
 	br.WriteByte(0xFF)       // end of file
 	br.Flush()
 
-	err := p.Parse(bufio.NewReader(&buffer))
-	ok(t, err)
+	go mustParse(t, p, bufio.NewReader(&buffer))
+
+	stop := false
+	for !stop {
+		select {
+		case v, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+			equals(t, "a", DataToString(v.Key))
+			equals(t, "foobar", DataToString(v.Value))
+		case v, ok := <-p.ctx.DbCh:
+			if !ok {
+				p.ctx.DbCh = nil
+				break
+			}
+			equals(t, int(0), v)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
 }
 
 func TestParseNoMagicString(t *testing.T) {
