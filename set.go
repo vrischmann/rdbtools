@@ -15,7 +15,9 @@ func (p *Parser) readSet(key interface{}, r *bufio.Reader) error {
 		return ErrUnexpectedEncodedLength
 	}
 
-	p.ctx.SetMetadataCh <- SetMetadata{Key: key, Len: l}
+	if p.ctx.SetMetadataCh != nil {
+		p.ctx.SetMetadataCh <- SetMetadata{Key: key, Len: l}
+	}
 
 	for i := int64(0); i < l; i++ {
 		value, err := readString(r)
@@ -23,7 +25,9 @@ func (p *Parser) readSet(key interface{}, r *bufio.Reader) error {
 			return err
 		}
 
-		p.ctx.SetDataCh <- value
+		if p.ctx.SetDataCh != nil {
+			p.ctx.SetDataCh <- value
+		}
 	}
 
 	return nil
@@ -49,7 +53,9 @@ func (p *Parser) readIntSet(key interface{}, r *bufio.Reader) error {
 		return err
 	}
 
-	p.ctx.SetMetadataCh <- SetMetadata{Key: key, Len: int64(length)}
+	if p.ctx.SetMetadataCh != nil {
+		p.ctx.SetMetadataCh <- SetMetadata{Key: key, Len: int64(length)}
+	}
 
 	// decode contents
 	for i := uint32(0); i < length; i++ {
@@ -74,7 +80,10 @@ func (p *Parser) readIntSet(key interface{}, r *bufio.Reader) error {
 			}
 			e = i
 		}
-		p.ctx.SetDataCh <- e
+
+		if p.ctx.SetDataCh != nil {
+			p.ctx.SetDataCh <- e
+		}
 	}
 
 	return nil
