@@ -61,7 +61,7 @@ func TestReadSortedSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readSortedSet([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -73,7 +73,7 @@ func TestReadSortedSetEncodedLen(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readSortedSet([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
 
@@ -97,7 +97,7 @@ func TestReadSortedSetNoEntryKey(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readSortedSet([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -123,7 +123,7 @@ func TestReadSortedSetNoEntryScore(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readSortedSet([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -257,7 +257,7 @@ func TestReadSortedSetInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readSortedSetInZipList([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSetInZipList(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -290,6 +290,6 @@ func TestReadSortedSetInZipListWrongScore(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readSortedSetInZipList([]byte("zset"), bufio.NewReader(&buffer))
+	err := p.readSortedSetInZipList(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, "strconv.ParseFloat: parsing \"foobar\": invalid syntax", err.Error())
 }

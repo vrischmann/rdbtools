@@ -44,7 +44,7 @@ func TestReadSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -56,7 +56,7 @@ func TestReadSetEncodedLen(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
 
@@ -80,7 +80,7 @@ func TestReadSetNoEntry(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -190,7 +190,7 @@ func TestReadIntSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -203,7 +203,7 @@ func TestReadIntSetNoEncoding(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -217,7 +217,7 @@ func TestReadIntSetNoLength(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -244,7 +244,7 @@ func TestReadIntSetNoInt16Value(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -271,7 +271,7 @@ func TestReadIntSetNoInt32Value(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -298,6 +298,6 @@ func TestReadIntSetNoInt64Value(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readIntSet([]byte("set"), bufio.NewReader(&buffer))
+	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }

@@ -44,7 +44,7 @@ func TestReadListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readList([]byte("list"), bufio.NewReader(&buffer))
+	err := p.readList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -57,7 +57,7 @@ func TestReadListEncodedLen(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readList([]byte("list"), bufio.NewReader(&buffer))
+	err := p.readList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
 
@@ -82,7 +82,7 @@ func TestReadListNoElementData(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readList([]byte("list"), bufio.NewReader(&buffer))
+	err := p.readList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -129,7 +129,7 @@ func TestReadListInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readListInZipList([]byte("list"), bufio.NewReader(&buffer))
+	err := p.readListInZipList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -141,6 +141,6 @@ func TestReadListInZipListFail(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readListInZipList([]byte("list"), bufio.NewReader(&buffer))
+	err := p.readListInZipList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }

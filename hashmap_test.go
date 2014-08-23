@@ -47,7 +47,7 @@ func TestReadHashMapNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readHashMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -59,7 +59,7 @@ func TestReadHashMapEncodedLen(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readHashMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
 
@@ -82,7 +82,7 @@ func TestReadHashMapNoEntryKey(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readHashMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -107,7 +107,7 @@ func TestReadHashMapNoEntryValue(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readHashMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -157,7 +157,7 @@ func TestReadHashMapInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readHashMapInZipList([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMapInZipList(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -170,7 +170,7 @@ func TestReadHashMapInZipListEmptyZipList(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readHashMapInZipList([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readHashMapInZipList(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, "unexpected EOF", err.Error())
 }
 
@@ -336,7 +336,7 @@ func TestReadZipMapNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	p := NewParser(ParserContext{})
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -349,7 +349,7 @@ func TestReadZipMapNoMapLen(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -363,7 +363,7 @@ func TestReadZipMapNoFirstByte(t *testing.T) {
 	br.Flush()
 
 	p := NewParser(ParserContext{})
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -390,7 +390,7 @@ func TestReadZipMapFailEntryKeyLength(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, "unexpected EOF", err.Error())
 }
 
@@ -416,7 +416,7 @@ func TestReadZipMapFailEntryKeyData(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -443,7 +443,7 @@ func TestReadZipMapFailEntryValByte(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -472,7 +472,7 @@ func TestReadZipMapFailEntryValLength(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, "unexpected EOF", err.Error())
 }
 
@@ -500,7 +500,7 @@ func TestReadZipMapFailEntryFreeByte(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -529,7 +529,7 @@ func TestReadZipMapFailEntryValData(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -559,7 +559,7 @@ func TestReadZipMapFailSkipFreeBytes(t *testing.T) {
 		equals(t, int64(1), md.Len)
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -600,7 +600,7 @@ func TestReadZipMapFailLastReadByte(t *testing.T) {
 		}
 	}()
 
-	err := p.readZipMap([]byte("hashmap"), bufio.NewReader(&buffer))
+	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 	end <- true
 }

@@ -10,6 +10,17 @@ type KeyObject struct {
 	Key        interface{}
 }
 
+func NewKeyObject(key interface{}, expiryTime int64) KeyObject {
+	k := KeyObject{
+		Key: key,
+	}
+	if expiryTime >= 0 {
+		k.ExpiryTime = time.Unix(expiryTime/1000, 0)
+	}
+
+	return k
+}
+
 func (k KeyObject) Expired() bool {
 	return k.ExpiryTime.After(time.Now())
 }

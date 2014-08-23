@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 )
 
-func (p *Parser) readSet(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readSet(key KeyObject, r *bufio.Reader) error {
 	l, e, err := readLen(r)
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func (p *Parser) readSet(key interface{}, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readIntSet(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readIntSet(key KeyObject, r *bufio.Reader) error {
 	data, err := readString(r)
 	if err != nil {
 		return err

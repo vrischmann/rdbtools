@@ -3,7 +3,7 @@ package rdbtools
 import "fmt"
 
 type ListMetadata struct {
-	Key interface{}
+	Key KeyObject
 	Len int64
 }
 
@@ -12,7 +12,7 @@ func (m ListMetadata) String() string {
 }
 
 type SetMetadata struct {
-	Key interface{}
+	Key KeyObject
 	Len int64
 }
 
@@ -21,7 +21,7 @@ func (m SetMetadata) String() string {
 }
 
 type HashMetadata struct {
-	Key interface{}
+	Key KeyObject
 	Len int64
 }
 
@@ -30,7 +30,7 @@ func (m HashMetadata) String() string {
 }
 
 type SortedSetMetadata struct {
-	Key interface{}
+	Key KeyObject
 	Len int64
 }
 

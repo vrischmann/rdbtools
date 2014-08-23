@@ -11,7 +11,7 @@ type HashEntry struct {
 	Value interface{}
 }
 
-func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readHashMap(key KeyObject, r *bufio.Reader) error {
 	l, e, err := readLen(r)
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readHashMapInZipList(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readHashMapInZipList(key KeyObject, r *bufio.Reader) error {
 	data, err := readString(r)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func readZipMapLength(r *bufio.Reader, b byte) (int64, error) {
 }
 
 // Read a hash map encoded as a zipmap (Redis < 2.6)
-func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readZipMap(key KeyObject, r *bufio.Reader) error {
 	data, err := readString(r)
 	if err != nil {
 		return err

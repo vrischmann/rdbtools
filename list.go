@@ -5,7 +5,7 @@ import (
 	"bytes"
 )
 
-func (p *Parser) readList(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readList(key KeyObject, r *bufio.Reader) error {
 	l, e, err := readLen(r)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func (p *Parser) readList(key interface{}, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readListInZipList(key interface{}, r *bufio.Reader) error {
+func (p *Parser) readListInZipList(key KeyObject, r *bufio.Reader) error {
 	data, err := readString(r)
 	if err != nil {
 		return err

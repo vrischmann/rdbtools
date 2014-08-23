@@ -328,19 +328,20 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 	b, _ := r.ReadByte() // We can't have an error here, it would have been caught in the call to Peek() above
 
 	// Read expiry time in seconds
+	var expiryTime int64 = -1
 	if b == 0xFD {
 		// TODO use the expiry time
 		var tmp int32
 		if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
 			return err
 		}
+		expiryTime = int64(tmp)
 	}
 
 	// Read expiry time in milliseconds
 	if b == 0xFC {
 		// TODO use the expiry time
-		var tmp int64
-		if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+		if err := binary.Read(r, binary.LittleEndian, &expiryTime); err != nil {
 			return err
 		}
 	}
@@ -352,10 +353,12 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 		}
 	}
 
-	key, err := readString(r)
+	keyStr, err := readString(r)
 	if err != nil {
 		return err
 	}
+
+	key := NewKeyObject(keyStr, expiryTime)
 
 	switch b {
 	case 0: // String encoding
@@ -365,7 +368,7 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 		}
 
 		if p.ctx.StringObjectCh != nil {
-			p.ctx.StringObjectCh <- StringObject{Key: KeyObject{Key: key}, Value: value}
+			p.ctx.StringObjectCh <- StringObject{Key: key, Value: value}
 		}
 	case 1: // List encoding
 		if err := p.readList(key, r); err != nil {
