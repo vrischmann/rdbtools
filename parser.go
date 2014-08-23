@@ -337,6 +337,7 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 		}
 	}
 
+	// Read expiry time in milliseconds
 	if b == 0xFC {
 		// TODO use the expiry time
 		var tmp int64
