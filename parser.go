@@ -328,6 +328,28 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 
 	b, _ := r.ReadByte() // We can't have an error here, it would have been caught in the call to Peek() above
 
+	// Read expiry time in seconds
+	if b == 0xFD {
+		// TODO use the expiry time
+		var tmp int32
+		if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+			return err
+		}
+	}
+
+	if b == 0xFC {
+		// TODO use the expiry time
+		var tmp int64
+		if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+			return err
+		}
+	}
+
+	b, err = r.ReadByte()
+	if err != nil {
+		return err
+	}
+
 	key, err := readString(r)
 	if err != nil {
 		return err
