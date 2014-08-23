@@ -74,7 +74,7 @@ func TestDumpKeysWithExpiry(t *testing.T) {
 				p.ctx.StringObjectCh = nil
 				break
 			}
-			equals(t, "expires_ms_precision", DataToString(v.Key))
+			equals(t, "expires_ms_precision", DataToString(v.Key.Key))
 			equals(t, "2022-12-25 10:11:12.573 UTC", DataToString(v.Value))
 		}
 

@@ -461,7 +461,7 @@ func TestReadKeyValuePairStringEncoding(t *testing.T) {
 
 	go func() {
 		v := <-p.ctx.StringObjectCh
-		equals(t, "a", DataToString(v.Key))
+		equals(t, "a", DataToString(v.Key.Key))
 		equals(t, "b", DataToString(v.Value))
 	}()
 
@@ -1071,7 +1071,7 @@ func TestParse(t *testing.T) {
 				p.ctx.StringObjectCh = nil
 				break
 			}
-			equals(t, "a", DataToString(v.Key))
+			equals(t, "a", DataToString(v.Key.Key))
 			equals(t, "foobar", DataToString(v.Value))
 		case v, ok := <-p.ctx.DbCh:
 			if !ok {
