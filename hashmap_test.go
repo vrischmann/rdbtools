@@ -22,7 +22,7 @@ func TestReadHashMap(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -132,7 +132,7 @@ func TestReadHashMapInZipList(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -192,7 +192,7 @@ func TestReadZipMap(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -232,7 +232,7 @@ func TestReadZipMapBigKey(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -271,7 +271,7 @@ func TestReadZipMapBigMapLen(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -311,7 +311,7 @@ func TestReadZipMapSkipFreeBytes(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -580,7 +580,7 @@ func TestReadZipMapFailLastReadByte(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 

@@ -38,7 +38,7 @@ type ParserContext struct {
 	SetMetadataCh       chan SetMetadata
 	SetDataCh           chan interface{}
 	HashMetadataCh      chan HashMetadata
-	HashDataCh          chan StringObject
+	HashDataCh          chan HashEntry
 	SortedSetMetadataCh chan SortedSetMetadata
 	SortedSetEntriesCh  chan SortedSetEntry
 	endOfFileCh         chan struct{}

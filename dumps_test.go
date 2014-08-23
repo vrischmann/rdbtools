@@ -27,7 +27,7 @@ func doParse(t *testing.T, p *Parser, path string) {
 func TestDumpDictionary(t *testing.T) {
 	p := NewParser(ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
-		HashDataCh:     make(chan StringObject),
+		HashDataCh:     make(chan HashEntry),
 	})
 
 	go doParse(t, p, "dumps/dictionary.rdb")

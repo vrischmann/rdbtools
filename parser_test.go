@@ -659,7 +659,7 @@ func TestReadKeyValuePairHashMapEncoding(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -716,7 +716,7 @@ func TestReadKeyValuePairZipMapEncoding(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 
@@ -964,7 +964,7 @@ func TestReadKeyValuePairHashMapInZipListEncoding(t *testing.T) {
 	p := NewParser(
 		ParserContext{
 			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan StringObject, 1),
+			HashDataCh:     make(chan HashEntry, 1),
 		},
 	)
 

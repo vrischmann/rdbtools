@@ -6,6 +6,11 @@ import (
 	"encoding/binary"
 )
 
+type HashEntry struct {
+	Key   interface{}
+	Value interface{}
+}
+
 func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
 	l, e, err := readLen(r)
 	if err != nil {
@@ -31,7 +36,7 @@ func (p *Parser) readHashMap(key interface{}, r *bufio.Reader) error {
 		}
 
 		if p.ctx.HashDataCh != nil {
-			p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+			p.ctx.HashDataCh <- HashEntry{Key: entryKey, Value: entryValue}
 		}
 	}
 
@@ -56,7 +61,7 @@ func (p *Parser) readHashMapInZipList(key interface{}, r *bufio.Reader) error {
 			entryKey = e
 		} else {
 			if p.ctx.HashDataCh != nil {
-				p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: e}
+				p.ctx.HashDataCh <- HashEntry{Key: entryKey, Value: e}
 			}
 			entryKey = nil
 		}
@@ -111,9 +116,9 @@ func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
 	// Users will rely on this to know when to end processing entries for a given hashmap.
 	//
 	// This is why we have to buffer the entries and then sending them once we processed the RDB data.
-	var results []StringObject
+	var results []HashEntry
 	if mapLen >= 254 {
-		results = make([]StringObject, 0)
+		results = make([]HashEntry, 0)
 	} else {
 		if p.ctx.HashMetadataCh != nil {
 			p.ctx.HashMetadataCh <- HashMetadata{Key: key, Len: int64(mapLen)}
@@ -162,10 +167,10 @@ func (p *Parser) readZipMap(key interface{}, r *bufio.Reader) error {
 		}
 
 		if mapLen >= 254 {
-			results = append(results, StringObject{Key: entryKey, Value: entryValue})
+			results = append(results, HashEntry{Key: entryKey, Value: entryValue})
 		} else {
 			if p.ctx.HashDataCh != nil {
-				p.ctx.HashDataCh <- StringObject{Key: entryKey, Value: entryValue}
+				p.ctx.HashDataCh <- HashEntry{Key: entryKey, Value: entryValue}
 			}
 		}
 
