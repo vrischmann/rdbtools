@@ -365,7 +365,9 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 			return err
 		}
 
-		p.ctx.StringObjectCh <- StringObject{Key: key, Value: value}
+		if p.ctx.StringObjectCh != nil {
+			p.ctx.StringObjectCh <- StringObject{Key: key, Value: value}
+		}
 	case 1: // List encoding
 		if err := p.readList(key, r); err != nil {
 			return err
