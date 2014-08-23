@@ -346,9 +346,11 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 		}
 	}
 
-	b, err = r.ReadByte()
-	if err != nil {
-		return err
+	if b == 0xFD || b == 0xFC {
+		b, err = r.ReadByte()
+		if err != nil {
+			return err
+		}
 	}
 
 	key, err := readString(r)
