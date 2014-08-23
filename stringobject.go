@@ -3,7 +3,7 @@ package rdbtools
 import "fmt"
 
 type StringObject struct {
-	Key   interface{}
+	Key   KeyObject
 	Value interface{}
 }
 
