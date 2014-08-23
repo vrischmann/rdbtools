@@ -24,7 +24,7 @@ func makeContext() {
 		SetMetadataCh:       make(chan rdbtools.SetMetadata),
 		SetDataCh:           make(chan interface{}),
 		HashMetadataCh:      make(chan rdbtools.HashMetadata),
-		HashDataCh:          make(chan rdbtools.StringObject),
+		HashDataCh:          make(chan rdbtools.HashEntry),
 		SortedSetMetadataCh: make(chan rdbtools.SortedSetMetadata),
 		SortedSetEntriesCh:  make(chan rdbtools.SortedSetEntry),
 	}
