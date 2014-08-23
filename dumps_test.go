@@ -58,3 +58,28 @@ func TestDumpDictionary(t *testing.T) {
 	equals(t, 1, i)
 	equals(t, 1000, j)
 }
+
+func TestDumpKeysWithExpiry(t *testing.T) {
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	go doParse(t, p, "dumps/keys_with_expiry.rdb")
+
+	stop := false
+	for !stop {
+		select {
+		case v, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+			equals(t, "expires_ms_precision", DataToString(v.Key))
+			equals(t, "2022-12-25 10:11:12.573 UTC", DataToString(v.Value))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+}
