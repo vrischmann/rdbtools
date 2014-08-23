@@ -12,7 +12,6 @@ import (
 type Parser struct {
 	ctx ParserContext
 	r   io.Reader
-	// br  *bufio.Reader
 }
 
 const (
