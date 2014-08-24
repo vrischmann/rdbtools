@@ -1087,6 +1087,137 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseAllTypes(t *testing.T) {
+	var buffer bytes.Buffer
+
+	p := NewParser(ParserContext{
+		DbCh:                make(chan int),
+		StringObjectCh:      make(chan StringObject),
+		ListMetadataCh:      make(chan ListMetadata),
+		ListDataCh:          make(chan interface{}),
+		SetMetadataCh:       make(chan SetMetadata),
+		SetDataCh:           make(chan interface{}),
+		HashMetadataCh:      make(chan HashMetadata),
+		HashDataCh:          make(chan HashEntry),
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	})
+
+	br := bufio.NewWriter(&buffer)
+	br.WriteString("REDIS") // magic string
+	br.WriteString("0006")  // RDB version
+	br.WriteByte(0xFE)      // next database byte
+	br.WriteByte(0)         // database number
+
+	br.WriteByte(0)          // string
+	br.Write([]byte{1, 'a'}) // key
+	br.WriteByte(6)          // string len
+	br.WriteString("foobar") // string data
+
+	br.WriteByte(1)          // list
+	br.Write([]byte{1, 'b'}) // key
+	br.WriteByte(1)          // list len
+	br.Write([]byte{1, 'Z'}) // list element
+
+	br.WriteByte(2)          // set
+	br.Write([]byte{1, 'c'}) // key
+	br.WriteByte(1)          // set len
+	br.Write([]byte{1, 'Z'}) // set element
+
+	br.WriteByte(3)                    // sorted set
+	br.Write([]byte{1, 'd'})           // key
+	br.WriteByte(1)                    // sorted set len
+	br.Write([]byte{1, 'Z'})           // entry member
+	br.Write([]byte{3, '0', '.', '1'}) // entry score
+
+	br.WriteByte(4)               // hash
+	br.Write([]byte{1, 'e'})      // key
+	br.WriteByte(1)               // hash len
+	br.Write([]byte{1, 'Z'})      // entry key
+	br.Write([]byte{2, 'Z', '1'}) // entry value
+	br.WriteByte(0xFF)            // end of file
+	br.Flush()
+
+	go mustParse(t, p, bufio.NewReader(&buffer))
+
+	stop := false
+	for !stop {
+		select {
+		case v, ok := <-p.ctx.DbCh:
+			if !ok {
+				p.ctx.DbCh = nil
+				break
+			}
+			equals(t, int(0), v)
+		case v, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+			equals(t, "a", DataToString(v.Key.Key))
+			equals(t, "foobar", DataToString(v.Value))
+		case v, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+			equals(t, int64(1), v.Len)
+			equals(t, "b", DataToString(v.Key.Key))
+		case v, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+			equals(t, "Z", DataToString(v))
+		case v, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+			equals(t, int64(1), v.Len)
+			equals(t, "c", DataToString(v.Key.Key))
+		case v, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+			equals(t, "Z", DataToString(v))
+		case v, ok := <-p.ctx.SortedSetMetadataCh:
+			if !ok {
+				p.ctx.SortedSetMetadataCh = nil
+				break
+			}
+			equals(t, int64(1), v.Len)
+			equals(t, "d", DataToString(v.Key.Key))
+		case v, ok := <-p.ctx.SortedSetEntriesCh:
+			if !ok {
+				p.ctx.SortedSetEntriesCh = nil
+				break
+			}
+			equals(t, "Z", DataToString(v.Value))
+			equals(t, 0.1, v.Score)
+		case v, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+			equals(t, int64(1), v.Len)
+			equals(t, "e", DataToString(v.Key.Key))
+		case v, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+			equals(t, "Z", DataToString(v.Key))
+			equals(t, "Z1", DataToString(v.Value))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+}
+
 func TestParseNoMagicString(t *testing.T) {
 	var buffer bytes.Buffer
 
