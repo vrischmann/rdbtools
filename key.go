@@ -22,7 +22,7 @@ func NewKeyObject(key interface{}, expiryTime int64) KeyObject {
 }
 
 func (k KeyObject) Expired() bool {
-	return k.ExpiryTime.After(time.Now())
+	return k.ExpiryTime.Before(time.Now())
 }
 
 func (k KeyObject) String() string {
