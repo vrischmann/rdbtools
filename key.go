@@ -27,7 +27,7 @@ func (k KeyObject) Expired() bool {
 
 func (k KeyObject) String() string {
 	if !k.ExpiryTime.IsZero() {
-		return fmt.Sprintf("KeyObject{ExpiryTime: %s, Key: %s}", k.ExpiryTime, DataToString(k.Key))
+		return fmt.Sprintf("KeyObject{ExpiryTime: %s, Key: %s}", k.ExpiryTime.UTC(), DataToString(k.Key))
 	}
 
 	return fmt.Sprintf("%s", DataToString(k.Key))
