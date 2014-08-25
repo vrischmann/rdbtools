@@ -8,6 +8,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 )
 
 func mustParse(t *testing.T, p *Parser, r io.Reader) {
@@ -439,6 +440,31 @@ func TestReadKeyValuePairErrors(t *testing.T) {
 	err = p.readKeyValuePair(bufio.NewReader(&buffer))
 	equals(t, errNoMoreKeyValuePair, err)
 
+	// Expiry in seconds byte but no data
+	buffer.Reset()
+	br.WriteByte(0xFD)
+	br.Flush()
+
+	err = p.readKeyValuePair(bufio.NewReader(&buffer))
+	equals(t, io.EOF, err)
+
+	// Expiry in milliseconds byte but no data
+	buffer.Reset()
+	br.WriteByte(0xFC)
+	br.Flush()
+
+	err = p.readKeyValuePair(bufio.NewReader(&buffer))
+	equals(t, io.EOF, err)
+
+	// Expiry byte but no value type byte
+	buffer.Reset()
+	br.WriteByte(0xFD)
+	binary.Write(br, binary.LittleEndian, uint32(1))
+	br.Flush()
+
+	err = p.readKeyValuePair(bufio.NewReader(&buffer))
+	equals(t, io.EOF, err)
+
 	// No key data
 	buffer.Reset()
 	br.WriteByte(0)
@@ -485,6 +511,72 @@ func TestReadKeyValuePairStringEncoding(t *testing.T) {
 
 	err = p.readKeyValuePair(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
+}
+
+func TestReadKeyValuePairSecondExpiry(t *testing.T) {
+	var buffer bytes.Buffer
+
+	br := bufio.NewWriter(&buffer)
+
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	etime := time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	df := func() {
+		v := <-p.ctx.StringObjectCh
+		equals(t, "a", DataToString(v.Key.Key))
+		equals(t, "2100-01-01 00:00:00 +0000 UTC", v.Key.ExpiryTime.UTC().String())
+		equals(t, false, v.Key.Expired())
+		equals(t, "foobar", DataToString(v.Value))
+	}
+
+	br.WriteByte(0xFD) // expiry in second
+	binary.Write(br, binary.LittleEndian, uint32(etime.Unix()))
+	br.WriteByte(0)
+	br.Write([]byte{1, 'a'})
+	br.WriteByte(6)
+	br.WriteString("foobar")
+	br.Flush()
+
+	go df()
+
+	err := p.readKeyValuePair(bufio.NewReader(&buffer))
+	ok(t, err)
+}
+
+func TestReadKeyValuePairMillisecondExpiry(t *testing.T) {
+	var buffer bytes.Buffer
+
+	br := bufio.NewWriter(&buffer)
+
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	etime := time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	df := func() {
+		v := <-p.ctx.StringObjectCh
+		equals(t, "a", DataToString(v.Key.Key))
+		equals(t, "2100-01-01 00:00:00 +0000 UTC", v.Key.ExpiryTime.UTC().String())
+		equals(t, false, v.Key.Expired())
+		equals(t, "foobar", DataToString(v.Value))
+	}
+
+	br.WriteByte(0xFC) // expiry in second
+	binary.Write(br, binary.LittleEndian, uint64(etime.Unix()*1000))
+	br.WriteByte(0)
+	br.Write([]byte{1, 'a'})
+	br.WriteByte(6)
+	br.WriteString("foobar")
+	br.Flush()
+
+	go df()
+
+	err := p.readKeyValuePair(bufio.NewReader(&buffer))
+	ok(t, err)
 }
 
 func TestReadKeyValuePairListEncoding(t *testing.T) {
