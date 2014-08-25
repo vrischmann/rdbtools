@@ -330,22 +330,21 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 	// Read expiry time in seconds
 	var expiryTime int64 = -1
 	if b == 0xFD {
-		// TODO use the expiry time
-		var tmp int32
+		var tmp uint32
 		if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
 			return err
 		}
-		expiryTime = int64(tmp)
+		expiryTime = int64(int64(tmp) * 1000)
 	}
 
 	// Read expiry time in milliseconds
 	if b == 0xFC {
-		// TODO use the expiry time
 		if err := binary.Read(r, binary.LittleEndian, &expiryTime); err != nil {
 			return err
 		}
 	}
 
+	// If the byte was a expiry time flag, we need to reread a byte
 	if b == 0xFD || b == 0xFC {
 		b, err = r.ReadByte()
 		if err != nil {
