@@ -17,13 +17,6 @@ Some things are not implemented:
 
 Also, the command line tool is very basic and doesn't do a lot. If you have a feature request, please shoot me a e-mail or open a issue.
 
-Utilities
----------
-
-In addition to the parser, there is a command line tool which can be used to:
-
-  * generate a memory report
-
 Documentation
 -------------
 
