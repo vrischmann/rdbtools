@@ -174,15 +174,120 @@ func TestDumpIntegerKeys(t *testing.T) {
 }
 
 func TestDumpIntSet16(t *testing.T) {
+	p := NewParser(ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/intset_16.rdb")
+
+	res := make([]int16, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+
+			equals(t, "intset_16", DataToString(md.Key))
+			equals(t, int64(3), md.Len)
+		case d, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+
+			res = append(res, d.(int16))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, int16(32764), res[0])
+	equals(t, int16(32765), res[1])
+	equals(t, int16(32766), res[2])
 }
 
 func TestDumpIntSet32(t *testing.T) {
+	p := NewParser(ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/intset_32.rdb")
+
+	res := make([]int32, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+
+			equals(t, "intset_32", DataToString(md.Key))
+			equals(t, int64(3), md.Len)
+		case d, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+
+			res = append(res, d.(int32))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, int32(2147418108), res[0])
+	equals(t, int32(2147418109), res[1])
+	equals(t, int32(2147418110), res[2])
 }
 
 func TestDumpIntSet64(t *testing.T) {
+	p := NewParser(ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/intset_64.rdb")
+
+	res := make([]int64, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+
+			equals(t, "intset_64", DataToString(md.Key))
+			equals(t, int64(3), md.Len)
+		case d, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+
+			res = append(res, d.(int64))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, int64(9223090557583032316), res[0])
+	equals(t, int64(9223090557583032317), res[1])
+	equals(t, int64(9223090557583032318), res[2])
 }
 
 func TestDumpKeysWithExpiry(t *testing.T) {
@@ -212,11 +317,81 @@ func TestDumpKeysWithExpiry(t *testing.T) {
 }
 
 func TestDumpLinkedList(t *testing.T) {
+	p := NewParser(ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/linkedlist.rdb")
+
+	i := 0
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+
+			equals(t, "force_linkedlist", DataToString(md.Key))
+			equals(t, int64(1000), md.Len)
+		case d, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+
+			equals(t, 50, len(DataToString(d)))
+			i++
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, 1000, i)
 }
 
-func TestDumpMutlipleDatabases(t *testing.T) {
+func TestDumpMultipleDatabases(t *testing.T) {
+	p := NewParser(ParserContext{
+		DbCh:           make(chan int),
+		StringObjectCh: make(chan StringObject),
+	})
 
+	go doParse(t, p, "dumps/multiple_databases.rdb")
+
+	data := make(map[int]StringObject)
+	var db int
+	stop := false
+	for !stop {
+		select {
+		case d, ok := <-p.ctx.DbCh:
+			if !ok {
+				p.ctx.DbCh = nil
+				break
+			}
+
+			db = d
+		case d, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+
+			data[db] = d
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "key_in_zeroth_database", DataToString(data[0].Key.Key))
+	equals(t, "zero", DataToString(data[0].Value))
+	equals(t, "key_in_second_database", DataToString(data[2].Key.Key))
+	equals(t, "second", DataToString(data[2].Value))
 }
 
 func TestDumpParserFilters(t *testing.T) {
