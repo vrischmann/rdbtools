@@ -117,12 +117,14 @@ func TestReadDatabase(t *testing.T) {
 		equals(t, int(0), db)
 	}()
 
+	copy(p.scratch[:], []byte{0, 0, 0, 0})
 	err := p.readDatabase(bufio.NewReader(&buffer))
 	ok(t, err)
 
 	// No data
 	buffer.Reset()
 
+	copy(p.scratch[:], []byte{0, 0, 0, 0})
 	err = p.readDatabase(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 
@@ -131,6 +133,7 @@ func TestReadDatabase(t *testing.T) {
 	br.WriteByte(0x01)
 	br.Flush()
 
+	copy(p.scratch[:], []byte{0, 0, 0, 0})
 	err = p.readDatabase(bufio.NewReader(&buffer))
 	equals(t, errNoMoreDatabases, err)
 
@@ -139,6 +142,7 @@ func TestReadDatabase(t *testing.T) {
 	br.WriteByte(0xFE)
 	br.Flush()
 
+	copy(p.scratch[:], []byte{0, 0, 0, 0})
 	err = p.readDatabase(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
