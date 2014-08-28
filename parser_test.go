@@ -14,6 +14,7 @@ import (
 func mustParse(t *testing.T, p *Parser, r io.Reader) {
 	err := p.Parse(r)
 	if err != nil {
+		p.ctx.closeChannels()
 		t.Fatalf("Error while parsing; err=%s", err)
 	}
 }
