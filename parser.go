@@ -92,9 +92,12 @@ func (p *Parser) Parse(r io.Reader) (err error) {
 	if err = readMagicString(br); err != nil {
 		return err
 	}
-	if err = readVersionNumber(br); err != nil {
+
+	var rdbVersion int
+	if rdbVersion, err = readVersionNumber(br); err != nil {
 		return err
 	}
+
 	for {
 		if err = p.readDatabase(br); err != nil && err != errNoMoreDatabases {
 			return err
@@ -119,6 +122,16 @@ func (p *Parser) Parse(r io.Reader) (err error) {
 	// the loop would just continue and error out somewhere.
 	br.ReadByte()
 
+	// Read the CRC64 checksum with RDB version >= 5
+	if rdbVersion >= 5 {
+		var checksum uint64
+		if err := binary.Read(br, binary.LittleEndian, &checksum); err != nil {
+			return err
+		}
+
+		// TODO compare checksum
+	}
+
 	p.ctx.closeChannels()
 
 	return nil
@@ -142,28 +155,28 @@ func readMagicString(r *bufio.Reader) error {
 	return nil
 }
 
-func readVersionNumber(r *bufio.Reader) error {
+func readVersionNumber(r *bufio.Reader) (int, error) {
 	data := make([]byte, 4)
 	read, err := r.Read(data)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	if read != 4 {
-		return ErrInvalidRDBVersionNumber
+		return -1, ErrInvalidRDBVersionNumber
 	}
 
 	val := string(data)
 	ival, err := strconv.Atoi(val)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	if ival < 1 || ival > RedisRdbVersion {
-		return ErrInvalidRDBVersionNumber
+		return -1, ErrInvalidRDBVersionNumber
 	}
 
-	return nil
+	return ival, nil
 }
 
 func (p *Parser) readDatabase(r *bufio.Reader) error {
