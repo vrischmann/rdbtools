@@ -59,38 +59,43 @@ func TestReadVersionNumber(t *testing.T) {
 	br.WriteString("0006")
 	br.Flush()
 
-	err := readVersionNumber(bufio.NewReader(&buffer))
+	v, err := readVersionNumber(bufio.NewReader(&buffer))
 	ok(t, err)
+	equals(t, 6, v)
 
 	// No data
 	buffer.Reset()
 
-	err = readVersionNumber(bufio.NewReader(&buffer))
+	v, err = readVersionNumber(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
+	equals(t, -1, v)
 
 	// Not enough data
 	buffer.Reset()
 	br.WriteString("FOO")
 	br.Flush()
 
-	err = readVersionNumber(bufio.NewReader(&buffer))
+	v, err = readVersionNumber(bufio.NewReader(&buffer))
 	equals(t, ErrInvalidRDBVersionNumber, err)
+	equals(t, -1, v)
 
 	// Not a number
 	buffer.Reset()
 	br.WriteString("foob")
 	br.Flush()
 
-	err = readVersionNumber(bufio.NewReader(&buffer))
+	v, err = readVersionNumber(bufio.NewReader(&buffer))
 	equals(t, "strconv.ParseInt: parsing \"foob\": invalid syntax", err.Error())
+	equals(t, -1, v)
 
 	// Wrong version number
 	buffer.Reset()
 	br.WriteString("0010")
 	br.Flush()
 
-	err = readVersionNumber(bufio.NewReader(&buffer))
+	v, err = readVersionNumber(bufio.NewReader(&buffer))
 	equals(t, ErrInvalidRDBVersionNumber, err)
+	equals(t, -1, v)
 }
 
 func TestReadDatabase(t *testing.T) {
