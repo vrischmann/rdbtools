@@ -84,3 +84,26 @@ func TestDumpKeysWithExpiry(t *testing.T) {
 		}
 	}
 }
+
+func TestDumpWithChecksum(t *testing.T) {
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	go doParse(t, p, "dumps/rdb_version_5_with_checksum.rdb")
+
+	stop := false
+	for !stop {
+		select {
+		case v, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+}
