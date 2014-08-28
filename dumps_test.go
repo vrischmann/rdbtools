@@ -20,6 +20,7 @@ func mustOpen(t *testing.T, path string) *os.File {
 func doParse(t *testing.T, p *Parser, path string) {
 	err := p.Parse(mustOpen(t, path))
 	if err != nil {
+		p.ctx.closeChannels()
 		t.Fatalf("Error while parsing '%s'; err=%s", path, err)
 	}
 }
