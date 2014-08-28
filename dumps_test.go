@@ -395,7 +395,142 @@ func TestDumpMultipleDatabases(t *testing.T) {
 }
 
 func TestDumpParserFilters(t *testing.T) {
+	p := NewParser(ParserContext{
+		DbCh:                make(chan int),
+		StringObjectCh:      make(chan StringObject),
+		ListMetadataCh:      make(chan ListMetadata),
+		ListDataCh:          make(chan interface{}),
+		SetMetadataCh:       make(chan SetMetadata),
+		SetDataCh:           make(chan interface{}),
+		HashMetadataCh:      make(chan HashMetadata),
+		HashDataCh:          make(chan HashEntry),
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	})
 
+	go doParse(t, p, "dumps/parser_filters.rdb")
+
+	lists := make(map[string][]interface{}, 0)
+	var currentList string
+	strings := make([]StringObject, 0)
+	stop := false
+	for !stop {
+		select {
+		case v, ok := <-p.ctx.DbCh:
+			if !ok {
+				p.ctx.DbCh = nil
+				break
+			}
+			equals(t, int(0), v)
+		case v, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+			strings = append(strings, v)
+		case v, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+			lists[DataToString(v.Key.Key)] = make([]interface{}, 0)
+			currentList = DataToString(v.Key.Key)
+		case v, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+			lists[currentList] = append(lists[currentList], v)
+		case _, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+		case _, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+		case _, ok := <-p.ctx.SortedSetMetadataCh:
+			if !ok {
+				p.ctx.SortedSetMetadataCh = nil
+				break
+			}
+		case _, ok := <-p.ctx.SortedSetEntriesCh:
+			if !ok {
+				p.ctx.SortedSetEntriesCh = nil
+				break
+			}
+		case _, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+		case _, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "k1", DataToString(strings[0].Key.Key))
+	equals(t, "ssssssss", DataToString(strings[0].Value))
+
+	equals(t, "k3", DataToString(strings[1].Key.Key))
+	equals(t, "wwwwwwww", DataToString(strings[1].Value))
+
+	equals(t, "s1", DataToString(strings[2].Key.Key))
+	equals(t, `.ahaa bit longer and with spaceslonger than 256 characters and trivially compressible --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------`, DataToString(strings[2].Value))
+
+	equals(t, "s2", DataToString(strings[3].Key.Key))
+	equals(t, "now_exists", DataToString(strings[3].Value))
+
+	equals(t, "n5b", DataToString(strings[4].Key.Key))
+	equals(t, int16(1000), strings[4].Value.(int16))
+
+	equals(t, "b1", DataToString(strings[5].Key.Key))
+	equals(t, []byte{0xFF}, strings[5].Value.([]byte))
+
+	equals(t, "b2", DataToString(strings[6].Key.Key))
+	equals(t, []byte{0, 0xFF}, strings[6].Value.([]byte))
+
+	equals(t, "b3", DataToString(strings[7].Key.Key))
+	equals(t, []byte{0, 0, 0xFF}, strings[7].Value.([]byte))
+
+	equals(t, "b4", DataToString(strings[8].Key.Key))
+	equals(t, []byte{0, 0, 0, 0xFF}, strings[8].Value.([]byte))
+
+	equals(t, "b5", DataToString(strings[9].Key.Key))
+	equals(t, []byte{0, 0, 0, 0, 0xFF}, strings[9].Value.([]byte))
+
+	equals(t, "n1", DataToString(strings[10].Key.Key))
+	equals(t, int8(-6), strings[10].Value.(int8))
+
+	equals(t, "n2", DataToString(strings[11].Key.Key))
+	equals(t, int16(501), strings[11].Value.(int16))
+
+	equals(t, "n3", DataToString(strings[12].Key.Key))
+	equals(t, int32(500001), strings[12].Value.(int32))
+
+	equals(t, "n4", DataToString(strings[13].Key.Key))
+	equals(t, int8(1), strings[13].Value.(int8))
+
+	equals(t, "n5", DataToString(strings[14].Key.Key))
+	equals(t, int16(1000), strings[14].Value.(int16))
+
+	equals(t, "n6", DataToString(strings[15].Key.Key))
+	equals(t, int32(1000000), strings[15].Value.(int32))
+
+	equals(t, "n4b", DataToString(strings[16].Key.Key))
+	equals(t, int8(1), strings[16].Value.(int8))
+
+	equals(t, "n6b", DataToString(strings[17].Key.Key))
+	equals(t, int32(1000000), strings[17].Value.(int32))
 }
 
 func TestDumpWithChecksum(t *testing.T) {
