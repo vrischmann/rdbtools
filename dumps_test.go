@@ -94,6 +94,7 @@ func TestDumpWithChecksum(t *testing.T) {
 	go doParse(t, p, "dumps/rdb_version_5_with_checksum.rdb")
 
 	stop := false
+	res := make([]StringObject, 0)
 	for !stop {
 		select {
 		case v, ok := <-p.ctx.StringObjectCh:
@@ -101,10 +102,36 @@ func TestDumpWithChecksum(t *testing.T) {
 				p.ctx.StringObjectCh = nil
 				break
 			}
+
+			res = append(res, v)
 		}
 
 		if p.ctx.Invalid() {
 			break
 		}
 	}
+
+	equals(t, "abcd", DataToString(res[0].Key.Key))
+	equals(t, true, res[0].Key.ExpiryTime.IsZero())
+	equals(t, "efgh", DataToString(res[0].Value))
+
+	equals(t, "foo", DataToString(res[1].Key.Key))
+	equals(t, true, res[1].Key.ExpiryTime.IsZero())
+	equals(t, "bar", DataToString(res[1].Value))
+
+	equals(t, "bar", DataToString(res[2].Key.Key))
+	equals(t, true, res[2].Key.ExpiryTime.IsZero())
+	equals(t, "baz", DataToString(res[2].Value))
+
+	equals(t, "abcdef", DataToString(res[3].Key.Key))
+	equals(t, true, res[3].Key.ExpiryTime.IsZero())
+	equals(t, "abcdef", DataToString(res[3].Value))
+
+	equals(t, "longerstring", DataToString(res[4].Key.Key))
+	equals(t, true, res[4].Key.ExpiryTime.IsZero())
+	equals(t, "thisisalongerstring.idontknowwhatitmeans", DataToString(res[4].Value))
+
+	equals(t, "abc", DataToString(res[5].Key.Key))
+	equals(t, true, res[5].Key.ExpiryTime.IsZero())
+	equals(t, "def", DataToString(res[5].Value))
 }
