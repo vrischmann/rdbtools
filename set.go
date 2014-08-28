@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"io"
 )
 
-func (p *Parser) readSet(key KeyObject, r *bufio.Reader) error {
-	l, e, err := readLen(r)
+func (p *Parser) readSet(key KeyObject, r io.Reader) error {
+	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
 	}
@@ -20,7 +21,7 @@ func (p *Parser) readSet(key KeyObject, r *bufio.Reader) error {
 	}
 
 	for i := int64(0); i < l; i++ {
-		value, err := readString(r)
+		value, err := p.readString(r)
 		if err != nil {
 			return err
 		}
@@ -33,8 +34,8 @@ func (p *Parser) readSet(key KeyObject, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readIntSet(key KeyObject, r *bufio.Reader) error {
-	data, err := readString(r)
+func (p *Parser) readIntSet(key KeyObject, r io.Reader) error {
+	data, err := p.readString(r)
 	if err != nil {
 		return err
 	}

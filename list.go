@@ -3,10 +3,11 @@ package rdbtools
 import (
 	"bufio"
 	"bytes"
+	"io"
 )
 
-func (p *Parser) readList(key KeyObject, r *bufio.Reader) error {
-	l, e, err := readLen(r)
+func (p *Parser) readList(key KeyObject, r io.Reader) error {
+	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
 	}
@@ -17,7 +18,7 @@ func (p *Parser) readList(key KeyObject, r *bufio.Reader) error {
 	p.ctx.ListMetadataCh <- ListMetadata{Key: key, Len: l}
 
 	for i := int64(0); i < l; i++ {
-		value, err := readString(r)
+		value, err := p.readString(r)
 		if err != nil {
 			return err
 		}
@@ -28,8 +29,8 @@ func (p *Parser) readList(key KeyObject, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readListInZipList(key KeyObject, r *bufio.Reader) error {
-	data, err := readString(r)
+func (p *Parser) readListInZipList(key KeyObject, r io.Reader) error {
+	data, err := p.readString(r)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func (p *Parser) readListInZipList(key KeyObject, r *bufio.Reader) error {
 	}
 	dr := bufio.NewReader(bytes.NewReader(data.([]byte)))
 
-	if err := readZipList(dr, onLenCallback, onElementCallback); err != nil {
+	if err := p.readZipList(dr, onLenCallback, onElementCallback); err != nil {
 		return err
 	}
 

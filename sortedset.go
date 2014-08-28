@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 )
 
@@ -16,8 +17,8 @@ func (e SortedSetEntry) String() string {
 	return fmt.Sprintf("SortedSetEntry{Value: %s, Score: %0.4f}", DataToString(e.Value), e.Score)
 }
 
-func (p *Parser) readSortedSet(key KeyObject, r *bufio.Reader) error {
-	l, e, err := readLen(r)
+func (p *Parser) readSortedSet(key KeyObject, r io.Reader) error {
+	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
 	}
@@ -28,12 +29,12 @@ func (p *Parser) readSortedSet(key KeyObject, r *bufio.Reader) error {
 	p.ctx.SortedSetMetadataCh <- SortedSetMetadata{Key: key, Len: l}
 
 	for i := int64(0); i < l; i++ {
-		value, err := readString(r)
+		value, err := p.readString(r)
 		if err != nil {
 			return err
 		}
 
-		score, err := readDoubleValue(r)
+		score, err := p.readDoubleValue(r)
 		if err != nil {
 			return err
 		}
@@ -45,8 +46,8 @@ func (p *Parser) readSortedSet(key KeyObject, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readSortedSetInZipList(key KeyObject, r *bufio.Reader) error {
-	data, err := readString(r)
+func (p *Parser) readSortedSetInZipList(key KeyObject, r io.Reader) error {
+	data, err := p.readString(r)
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (p *Parser) readSortedSetInZipList(key KeyObject, r *bufio.Reader) error {
 	}
 	dr := bufio.NewReader(bytes.NewReader(data.([]byte)))
 
-	if err := readZipList(dr, onLenCallback, onElementCallback); err != nil {
+	if err := p.readZipList(dr, onLenCallback, onElementCallback); err != nil {
 		return err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"io"
 )
 
 type HashEntry struct {
@@ -11,8 +12,8 @@ type HashEntry struct {
 	Value interface{}
 }
 
-func (p *Parser) readHashMap(key KeyObject, r *bufio.Reader) error {
-	l, e, err := readLen(r)
+func (p *Parser) readHashMap(key KeyObject, r io.Reader) error {
+	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
 	}
@@ -25,12 +26,12 @@ func (p *Parser) readHashMap(key KeyObject, r *bufio.Reader) error {
 	}
 
 	for i := int64(0); i < l; i++ {
-		entryKey, err := readString(r)
+		entryKey, err := p.readString(r)
 		if err != nil {
 			return err
 		}
 
-		entryValue, err := readString(r)
+		entryValue, err := p.readString(r)
 		if err != nil {
 			return err
 		}
@@ -43,8 +44,8 @@ func (p *Parser) readHashMap(key KeyObject, r *bufio.Reader) error {
 	return nil
 }
 
-func (p *Parser) readHashMapInZipList(key KeyObject, r *bufio.Reader) error {
-	data, err := readString(r)
+func (p *Parser) readHashMapInZipList(key KeyObject, r io.Reader) error {
+	data, err := p.readString(r)
 	if err != nil {
 		return err
 	}
@@ -69,14 +70,14 @@ func (p *Parser) readHashMapInZipList(key KeyObject, r *bufio.Reader) error {
 	}
 	dr := bufio.NewReader(bytes.NewReader(data.([]byte)))
 
-	if err := readZipList(dr, onLenCallback, onElementCallback); err != nil {
+	if err := p.readZipList(dr, onLenCallback, onElementCallback); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func readZipMapLength(r *bufio.Reader, b byte) (int64, error) {
+func readZipMapLength(r io.Reader, b byte) (int64, error) {
 	var l uint32
 	switch b {
 	case 253:
@@ -91,8 +92,8 @@ func readZipMapLength(r *bufio.Reader, b byte) (int64, error) {
 }
 
 // Read a hash map encoded as a zipmap (Redis < 2.6)
-func (p *Parser) readZipMap(key KeyObject, r *bufio.Reader) error {
-	data, err := readString(r)
+func (p *Parser) readZipMap(key KeyObject, r io.Reader) error {
+	data, err := p.readString(r)
 	if err != nil {
 		return err
 	}

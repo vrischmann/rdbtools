@@ -42,7 +42,7 @@ func TestDataToString(t *testing.T) {
 }
 
 // Call the read function f and report errors if there are any
-func readAndNotify(t *testing.T, r io.Reader, key string, f func(KeyObject, *bufio.Reader) error) {
+func readAndNotify(t *testing.T, r io.Reader, key string, f func(KeyObject, io.Reader) error) {
 	err := f(KeyObject{Key: []byte(key)}, bufio.NewReader(r))
 	if err != nil {
 		t.Error(err)

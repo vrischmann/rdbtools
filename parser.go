@@ -1,7 +1,6 @@
 package rdbtools
 
 import (
-	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -10,8 +9,9 @@ import (
 )
 
 type Parser struct {
-	ctx ParserContext
-	r   io.Reader
+	ctx     ParserContext
+	r       io.Reader
+	scratch [4]byte
 }
 
 const (
@@ -23,6 +23,7 @@ var (
 	errNoMoreKeyValuePair            = errors.New("errNoMoreKeyValuePair")
 	ErrInvalidMagicString            = errors.New("invalid magic string")
 	ErrInvalidRDBVersionNumber       = errors.New("invalid RDB version number")
+	ErrInvalidChecksum               = errors.New("invalid checksum")
 	ErrUnexpectedEncodedLength       = errors.New("unexpected encoded length")
 	ErrUnknownValueType              = errors.New("unknown value type")
 	ErrUnknownLengthEncoding         = errors.New("unknown length encoding")
@@ -87,49 +88,49 @@ func NewParser(ctx ParserContext) *Parser {
 }
 
 func (p *Parser) Parse(r io.Reader) (err error) {
-	br := bufio.NewReader(r)
+	cr := newChecksumReader(r)
 
-	if err = readMagicString(br); err != nil {
+	if err = readMagicString(cr); err != nil {
 		return err
 	}
 
 	var rdbVersion int
-	if rdbVersion, err = readVersionNumber(br); err != nil {
+	if rdbVersion, err = readVersionNumber(cr); err != nil {
 		return err
 	}
 
 	for {
-		if err = p.readDatabase(br); err != nil && err != errNoMoreDatabases {
+		if err = p.readDatabase(cr); err != nil && err != errNoMoreDatabases {
 			return err
 		} else if err != nil && err == errNoMoreDatabases {
 			break
 		}
 
 		for {
-			if err = p.readKeyValuePair(br); err != nil && err != errNoMoreKeyValuePair {
+			if err = p.readKeyValuePair(cr); err != nil && err != errNoMoreKeyValuePair {
 				return err
 			} else if err != nil && err == errNoMoreKeyValuePair {
 				break
 			}
 		}
-	}
 
-	// End of file byte - we don't handle the error here because we already handled it in the loop before
-	// via the Peek() call
-	//
-	// Also, we don't check for validity of the byte here. This is because in the loop before, we will continue to loop
-	// until we find a valid 0xFE (next database) or 0xFF (end of file) byte. If the data happens to contain a wrong EOF byte,
-	// the loop would just continue and error out somewhere.
-	br.ReadByte()
+		if p.scratch[0] == 0xFF {
+			break
+		}
+	}
 
 	// Read the CRC64 checksum with RDB version >= 5
 	if rdbVersion >= 5 {
+		sum := cr.checksum
+
 		var checksum uint64
-		if err := binary.Read(br, binary.LittleEndian, &checksum); err != nil {
+		if err := binary.Read(cr, binary.LittleEndian, &checksum); err != nil {
 			return err
 		}
 
-		// TODO compare checksum
+		if sum != checksum {
+			return ErrInvalidChecksum
+		}
 	}
 
 	p.ctx.closeChannels()
@@ -137,7 +138,7 @@ func (p *Parser) Parse(r io.Reader) (err error) {
 	return nil
 }
 
-func readMagicString(r *bufio.Reader) error {
+func readMagicString(r io.Reader) error {
 	data := make([]byte, 5)
 	read, err := r.Read(data)
 	if err != nil {
@@ -155,7 +156,7 @@ func readMagicString(r *bufio.Reader) error {
 	return nil
 }
 
-func readVersionNumber(r *bufio.Reader) (int, error) {
+func readVersionNumber(r io.Reader) (int, error) {
 	data := make([]byte, 4)
 	read, err := r.Read(data)
 	if err != nil {
@@ -179,16 +180,14 @@ func readVersionNumber(r *bufio.Reader) (int, error) {
 	return ival, nil
 }
 
-func (p *Parser) readDatabase(r *bufio.Reader) error {
-	data, err := r.Peek(1)
+func (p *Parser) readDatabase(r io.Reader) error {
+	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return err
 	}
 
-	if data[0] != 0xFE {
+	if p.scratch[0] != 0xFE {
 		return errNoMoreDatabases
-	} else {
-		r.ReadByte() // Discard
 	}
 
 	var dbNumber uint8
@@ -203,22 +202,24 @@ func (p *Parser) readDatabase(r *bufio.Reader) error {
 	return nil
 }
 
-func readLen(r *bufio.Reader) (int64, bool, error) {
-	b, err := r.ReadByte()
+func (p *Parser) readLen(r io.Reader) (int64, bool, error) {
+	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return -1, false, err
 	}
+
+	b := p.scratch[0]
 
 	bits := (b & 0xC0) >> 6
 	switch bits {
 	case 0:
 		return int64(b) & 0x3f, false, nil
 	case 1:
-		newB, err := r.ReadByte()
+		_, err := io.ReadFull(r, p.scratch[0:1])
 		if err != nil {
 			return -1, false, err
 		}
-		return int64((int64(b)&0x3f)<<8) | int64(newB), false, nil
+		return int64((int64(b)&0x3f)<<8) | int64(p.scratch[0]), false, nil
 	case 2:
 		var tmp uint32
 		if err := binary.Read(r, binary.BigEndian, &tmp); err != nil {
@@ -231,11 +232,13 @@ func readLen(r *bufio.Reader) (int64, bool, error) {
 	}
 }
 
-func readDoubleValue(r *bufio.Reader) (float64, error) {
-	l, err := r.ReadByte()
+func (p *Parser) readDoubleValue(r io.Reader) (float64, error) {
+	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return 0, err
 	}
+
+	l := p.scratch[0]
 
 	switch l {
 	case 255:
@@ -254,7 +257,7 @@ func readDoubleValue(r *bufio.Reader) (float64, error) {
 	}
 }
 
-func readBytes(r *bufio.Reader, length int64) ([]byte, error) {
+func readBytes(r io.Reader, length int64) ([]byte, error) {
 	bytes := make([]byte, length)
 	_, err := io.ReadFull(r, bytes)
 	if err != nil {
@@ -264,13 +267,13 @@ func readBytes(r *bufio.Reader, length int64) ([]byte, error) {
 	return bytes, nil
 }
 
-func readLZFString(r *bufio.Reader) ([]byte, error) {
-	clen, _, err := readLen(r)
+func (p *Parser) readLZFString(r io.Reader) ([]byte, error) {
+	clen, _, err := p.readLen(r)
 	if err != nil {
 		return nil, err
 	}
 
-	ulen, _, err := readLen(r)
+	ulen, _, err := p.readLen(r)
 	if err != nil {
 		return nil, err
 	}
@@ -283,8 +286,8 @@ func readLZFString(r *bufio.Reader) ([]byte, error) {
 	return lzfDecompress(cdata, ulen), nil
 }
 
-func readString(r *bufio.Reader) (interface{}, error) {
-	l, e, err := readLen(r)
+func (p *Parser) readString(r io.Reader) (interface{}, error) {
+	l, e, err := p.readLen(r)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +315,7 @@ func readString(r *bufio.Reader) (interface{}, error) {
 			}
 			return i, nil
 		case 3: // LZF
-			bytes, err = readLZFString(r)
+			bytes, err = p.readLZFString(r)
 			if err != nil {
 				return nil, err
 			}
@@ -328,17 +331,17 @@ func readString(r *bufio.Reader) (interface{}, error) {
 	return bytes, nil
 }
 
-func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
-	data, err := r.Peek(1)
+func (p *Parser) readKeyValuePair(r io.Reader) error {
+	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return err
 	}
 
-	if data[0] == 0xFE || data[0] == 0xFF {
+	if p.scratch[0] == 0xFE || p.scratch[0] == 0xFF {
 		return errNoMoreKeyValuePair
 	}
 
-	b, _ := r.ReadByte() // We can't have an error here, it would have been caught in the call to Peek() above
+	b := p.scratch[0]
 
 	// Read expiry time in seconds
 	var expiryTime int64 = -1
@@ -359,13 +362,14 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 
 	// If the byte was a expiry time flag, we need to reread a byte
 	if b == 0xFD || b == 0xFC {
-		b, err = r.ReadByte()
+		_, err := io.ReadFull(r, p.scratch[0:1])
+		b = p.scratch[0]
 		if err != nil {
 			return err
 		}
 	}
 
-	keyStr, err := readString(r)
+	keyStr, err := p.readString(r)
 	if err != nil {
 		return err
 	}
@@ -374,7 +378,7 @@ func (p *Parser) readKeyValuePair(r *bufio.Reader) error {
 
 	switch b {
 	case 0: // String encoding
-		value, err := readString(r)
+		value, err := p.readString(r)
 		if err != nil {
 			return err
 		}

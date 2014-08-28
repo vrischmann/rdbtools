@@ -1,14 +1,14 @@
 package rdbtools
 
 import (
-	"bufio"
 	"encoding/binary"
+	"io"
 )
 
 type zipListOnLenCallback func(length int64) error
 type zipListOnElementCallback func(element interface{}) error
 
-func readZipList(r *bufio.Reader, onLenCallback zipListOnLenCallback, onElementCallback zipListOnElementCallback) error {
+func (p *Parser) readZipList(r io.Reader, onLenCallback zipListOnLenCallback, onElementCallback zipListOnElementCallback) error {
 	var zlBytes int32
 	var zlTail int32
 	var zlLen int16
@@ -31,10 +31,12 @@ func readZipList(r *bufio.Reader, onLenCallback zipListOnLenCallback, onElementC
 	}
 
 	for i := 0; i < int(zlLen); i++ {
-		b, err := r.ReadByte()
+		_, err := io.ReadFull(r, p.scratch[0:1])
 		if err != nil {
 			return err
 		}
+
+		b := p.scratch[0]
 
 		// Read length of the previous entry
 		// We don't use it though
@@ -50,11 +52,12 @@ func readZipList(r *bufio.Reader, onLenCallback zipListOnLenCallback, onElementC
 			return ErrUnexpectedPrevLengthEntryByte
 		}
 
-		flag, err := r.ReadByte()
+		_, err = io.ReadFull(r, p.scratch[0:1])
 		if err != nil {
 			return err
 		}
 
+		flag := p.scratch[0]
 		var data interface{}
 
 		if (flag & 0xC0) == 0 {
@@ -66,12 +69,12 @@ func readZipList(r *bufio.Reader, onLenCallback zipListOnLenCallback, onElementC
 			}
 		} else if (flag & 0xC0) == 0x40 {
 			// String with length <= 16383 bytes
-			tmp, err := r.ReadByte()
+			_, err = io.ReadFull(r, p.scratch[0:1])
 			if err != nil {
 				return err
 			}
 
-			length := (int64(flag&0x3F) << 8) | int64(tmp)
+			length := (int64(flag&0x3F) << 8) | int64(p.scratch[0])
 			data, err = readBytes(r, length)
 			if err != nil {
 				return err
@@ -122,12 +125,12 @@ func readZipList(r *bufio.Reader, onLenCallback zipListOnLenCallback, onElementC
 			data = (int32(bytes[0]) << 16) | (int32(bytes[1]) << 8) | int32(bytes[2])
 		} else if flag == 0xFE {
 			// int8
-			tmp, err := r.ReadByte()
+			_, err := io.ReadFull(r, p.scratch[0:1])
 			if err != nil {
 				return err
 			}
 
-			data = int8(tmp)
+			data = int8(p.scratch[0])
 		} else if (flag & 0xF0) == 0xF0 {
 			// int4
 			data = (int(int(flag) & 0x0F)) - 1

@@ -147,12 +147,13 @@ func TestReadLen(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
+	p := NewParser(ParserContext{})
 
 	// 6 bits encoding
 	br.WriteByte(1)
 	br.Flush()
 
-	l, e, err := readLen(bufio.NewReader(&buffer))
+	l, e, err := p.readLen(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int64(1), l)
 	equals(t, false, e)
@@ -163,7 +164,7 @@ func TestReadLen(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	l, e, err = readLen(bufio.NewReader(&buffer))
+	l, e, err = p.readLen(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int64(257), l)
 	equals(t, false, e)
@@ -174,7 +175,7 @@ func TestReadLen(t *testing.T) {
 	binary.Write(br, binary.BigEndian, int32(1))
 	br.Flush()
 
-	l, e, err = readLen(bufio.NewReader(&buffer))
+	l, e, err = p.readLen(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int64(1), l)
 	equals(t, false, e)
@@ -184,7 +185,7 @@ func TestReadLen(t *testing.T) {
 	br.WriteByte(0xD1)
 	br.Flush()
 
-	l, e, err = readLen(bufio.NewReader(&buffer))
+	l, e, err = p.readLen(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int64(17), l)
 	equals(t, true, e)
@@ -194,7 +195,7 @@ func TestReadLen(t *testing.T) {
 	br.WriteByte(0x41)
 	br.Flush()
 
-	l, e, err = readLen(bufio.NewReader(&buffer))
+	l, e, err = p.readLen(bufio.NewReader(&buffer))
 	equals(t, int64(-1), l)
 	equals(t, false, e)
 	equals(t, io.EOF, err)
@@ -204,7 +205,7 @@ func TestReadLen(t *testing.T) {
 	br.WriteByte(0x80)
 	br.Flush()
 
-	l, e, err = readLen(bufio.NewReader(&buffer))
+	l, e, err = p.readLen(bufio.NewReader(&buffer))
 	equals(t, int64(-1), l)
 	equals(t, false, e)
 	equals(t, io.EOF, err)
@@ -214,12 +215,13 @@ func TestReadDoubleValue(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
+	p := NewParser(ParserContext{})
 
 	// Negative inf
 	br.WriteByte(0xFF)
 	br.Flush()
 
-	v, err := readDoubleValue(bufio.NewReader(&buffer))
+	v, err := p.readDoubleValue(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, true, math.IsInf(v, -1))
 
@@ -228,7 +230,7 @@ func TestReadDoubleValue(t *testing.T) {
 	br.WriteByte(0xFE)
 	br.Flush()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, true, math.IsInf(v, 1))
 
@@ -237,7 +239,7 @@ func TestReadDoubleValue(t *testing.T) {
 	br.WriteByte(0xFD)
 	br.Flush()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, true, math.IsNaN(v))
 
@@ -247,14 +249,14 @@ func TestReadDoubleValue(t *testing.T) {
 	br.WriteString("20.1")
 	br.Flush()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, 20.1, v)
 
 	// No data
 	buffer.Reset()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 
 	// No additional bytes
@@ -262,7 +264,7 @@ func TestReadDoubleValue(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 
 	// Not a float value
@@ -271,7 +273,7 @@ func TestReadDoubleValue(t *testing.T) {
 	br.WriteString("foobar")
 	br.Flush()
 
-	v, err = readDoubleValue(bufio.NewReader(&buffer))
+	v, err = p.readDoubleValue(bufio.NewReader(&buffer))
 	equals(t, "strconv.ParseFloat: parsing \"foobar\": invalid syntax", err.Error())
 }
 
@@ -279,6 +281,7 @@ func TestReadLZFString(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
+	p := NewParser(ParserContext{})
 
 	data := []byte{1, 97, 97, 224, 246, 0, 1, 97, 97}
 
@@ -288,14 +291,14 @@ func TestReadLZFString(t *testing.T) {
 	br.Write(data)
 	br.Flush()
 
-	v, err := readLZFString(bufio.NewReader(&buffer))
+	v, err := p.readLZFString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, strings.Repeat("a", 259), DataToString(v))
 
 	// No clen data
 	buffer.Reset()
 
-	v, err = readLZFString(bufio.NewReader(&buffer))
+	v, err = p.readLZFString(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 
 	// No ulen data
@@ -303,7 +306,7 @@ func TestReadLZFString(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	v, err = readLZFString(bufio.NewReader(&buffer))
+	v, err = p.readLZFString(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 
 	// No cdata
@@ -312,7 +315,7 @@ func TestReadLZFString(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	v, err = readLZFString(bufio.NewReader(&buffer))
+	v, err = p.readLZFString(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -320,13 +323,14 @@ func TestReadString(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
+	p := NewParser(ParserContext{})
 
 	// Length prefixed string
 	br.WriteByte(1)
 	br.WriteByte('a')
 	br.Flush()
 
-	v, err := readString(bufio.NewReader(&buffer))
+	v, err := p.readString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, "a", DataToString(v))
 
@@ -336,7 +340,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int8(1), v)
 
@@ -346,7 +350,7 @@ func TestReadString(t *testing.T) {
 	binary.Write(br, binary.LittleEndian, int16(1))
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int16(1), v)
 
@@ -356,7 +360,7 @@ func TestReadString(t *testing.T) {
 	binary.Write(br, binary.LittleEndian, int32(1))
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, int32(1), v)
 
@@ -370,7 +374,7 @@ func TestReadString(t *testing.T) {
 	br.Write(data)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	ok(t, err)
 	equals(t, strings.Repeat("a", 259), DataToString(v))
 
@@ -379,7 +383,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	equals(t, nil, v)
 	equals(t, io.EOF, err)
 
@@ -388,7 +392,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(0xC0)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	equals(t, nil, v)
 	equals(t, io.EOF, err)
 
@@ -397,7 +401,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(0xC1)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	equals(t, nil, v)
 	equals(t, io.EOF, err)
 
@@ -406,7 +410,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(0xC2)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	equals(t, nil, v)
 	equals(t, io.EOF, err)
 
@@ -415,7 +419,7 @@ func TestReadString(t *testing.T) {
 	br.WriteByte(0xC3)
 	br.Flush()
 
-	v, err = readString(bufio.NewReader(&buffer))
+	v, err = p.readString(bufio.NewReader(&buffer))
 	equals(t, nil, v)
 	equals(t, io.EOF, err)
 }
@@ -1148,7 +1152,7 @@ func TestParse(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 	br.WriteString("REDIS")  // magic string
-	br.WriteString("0006")   // RDB version
+	br.WriteString("0004")   // RDB version TODO use version >= 5 and handle checksum
 	br.WriteByte(0xFE)       // next database byte
 	br.WriteByte(0)          // database number
 	br.WriteByte(0)          // string
@@ -1203,7 +1207,7 @@ func TestParseAllTypes(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 	br.WriteString("REDIS") // magic string
-	br.WriteString("0006")  // RDB version
+	br.WriteString("0004")  // RDB version TODO use version >= 5 and handling checksum
 	br.WriteByte(0xFE)      // next database byte
 	br.WriteByte(0)         // database number
 
