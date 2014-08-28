@@ -181,13 +181,16 @@ func readVersionNumber(r io.Reader) (int, error) {
 }
 
 func (p *Parser) readDatabase(r io.Reader) error {
-	_, err := io.ReadFull(r, p.scratch[0:1])
-	if err != nil {
-		return err
-	}
-
+	// Might have read the 0xFE byte already in the last readKeyValuePair call
 	if p.scratch[0] != 0xFE {
-		return errNoMoreDatabases
+		_, err := io.ReadFull(r, p.scratch[0:1])
+		if err != nil {
+			return err
+		}
+
+		if p.scratch[0] != 0xFE {
+			return errNoMoreDatabases
+		}
 	}
 
 	var dbNumber uint8
