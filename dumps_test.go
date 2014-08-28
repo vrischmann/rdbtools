@@ -2,6 +2,7 @@ package rdbtools
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -60,6 +61,130 @@ func TestDumpDictionary(t *testing.T) {
 	equals(t, 1000, j)
 }
 
+func TestDumpEasilyCompressibleStringKey(t *testing.T) {
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	go doParse(t, p, "dumps/easily_compressible_string_key.rdb")
+
+	stop := false
+	for !stop {
+		select {
+		case d, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+
+			equals(t, strings.Repeat("a", 200), DataToString(d.Key.Key))
+			equals(t, true, d.Key.ExpiryTime.IsZero())
+			equals(t, "Key that redis should compress easily", DataToString(d.Value))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+}
+
+func TestDumpEmptyDatabase(t *testing.T) {
+	p := NewParser(ParserContext{})
+
+	doParse(t, p, "dumps/empty_database.rdb")
+}
+
+func TestDumpHashAsZipList(t *testing.T) {
+	p := NewParser(ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	})
+
+	go doParse(t, p, "dumps/hash_as_ziplist.rdb")
+
+	res := make([]HashEntry, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+			equals(t, int64(3), md.Len)
+			equals(t, "zipmap_compresses_easily", DataToString(md.Key.Key))
+		case d, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "a", DataToString(res[0].Key))
+	equals(t, "aa", DataToString(res[0].Value))
+	equals(t, "aa", DataToString(res[1].Key))
+	equals(t, "aaaa", DataToString(res[1].Value))
+	equals(t, "aaaaa", DataToString(res[2].Key))
+	equals(t, "aaaaaaaaaaaaaa", DataToString(res[2].Value))
+}
+
+func TestDumpIntegerKeys(t *testing.T) {
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
+
+	go doParse(t, p, "dumps/integer_keys.rdb")
+
+	res := make([]StringObject, 0)
+	stop := false
+	for !stop {
+		select {
+		case d, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, int32(183358245), res[0].Key.Key.(int32))
+	equals(t, "Positive 32 bit integer", DataToString(res[0].Value))
+	equals(t, int8(125), res[1].Key.Key.(int8))
+	equals(t, "Positive 8 bit integer", DataToString(res[1].Value))
+	equals(t, int16(-29477), res[2].Key.Key.(int16))
+	equals(t, "Negative 16 bit integer", DataToString(res[2].Value))
+	equals(t, int8(-123), res[3].Key.Key.(int8))
+	equals(t, "Negative 8 bit integer", DataToString(res[3].Value))
+	equals(t, int32(43947), res[4].Key.Key.(int32))
+	equals(t, "Positive 16 bit integer", DataToString(res[4].Value))
+	equals(t, int32(-183358245), res[5].Key.Key.(int32))
+	equals(t, "Negative 32 bit integer", DataToString(res[5].Value))
+}
+
+func TestDumpIntSet16(t *testing.T) {
+
+}
+
+func TestDumpIntSet32(t *testing.T) {
+
+}
+
+func TestDumpIntSet64(t *testing.T) {
+
+}
+
 func TestDumpKeysWithExpiry(t *testing.T) {
 	p := NewParser(ParserContext{
 		StringObjectCh: make(chan StringObject),
@@ -84,6 +209,18 @@ func TestDumpKeysWithExpiry(t *testing.T) {
 			break
 		}
 	}
+}
+
+func TestDumpLinkedList(t *testing.T) {
+
+}
+
+func TestDumpMutlipleDatabases(t *testing.T) {
+
+}
+
+func TestDumpParserFilters(t *testing.T) {
+
 }
 
 func TestDumpWithChecksum(t *testing.T) {
@@ -134,4 +271,44 @@ func TestDumpWithChecksum(t *testing.T) {
 	equals(t, "abc", DataToString(res[5].Key.Key))
 	equals(t, true, res[5].Key.ExpiryTime.IsZero())
 	equals(t, "def", DataToString(res[5].Value))
+}
+
+func TestDumpRegularSet(t *testing.T) {
+
+}
+
+func TestDumpRegularSortedSet(t *testing.T) {
+
+}
+
+func TestDumpSortedSetAsZipList(t *testing.T) {
+
+}
+
+func TestDumpUncompressibleStringKeys(t *testing.T) {
+
+}
+
+func TestDumpZipListThatCompressesEasily(t *testing.T) {
+
+}
+
+func TestDumpZipListThatDoesntCompress(t *testing.T) {
+
+}
+
+func TestDumpZipListWithIntegers(t *testing.T) {
+
+}
+
+func TestDumpZipMapThatCompressesEasily(t *testing.T) {
+
+}
+
+func TestDumpZipMapThatDoesntCompress(t *testing.T) {
+
+}
+
+func TestDumpZipMapWithBigValues(t *testing.T) {
+
 }
