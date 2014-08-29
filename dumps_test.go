@@ -484,12 +484,65 @@ func TestDumpParserFilters(t *testing.T) {
 		}
 	}
 
-	equals(t, false, sets["set1"] == nil)
-	equals(t, []interface{}{[]byte{99}, []byte{100}, []byte{97}, []byte{98}}, sets["set1"])
+	// Lists
+	equals(t, false, lists["l1"] == nil)
+	equals(t, "yup", DataToString(lists["l1"][0]))
+	equals(t, "aha", DataToString(lists["l1"][1]))
 
-	equals(t, false, sets["set4"] == nil)
-	equals(t, []interface{}{int16(1), int16(2), int16(3), int16(4), int16(5), int16(6), int16(7), int16(8), int16(9), int16(10)}, sets["set4"])
+	equals(t, false, lists["l2"] == nil)
+	equals(t, "something", DataToString(lists["l2"][0]))
+	equals(t, "now a bit longer and perhaps more interesting", DataToString(lists["l2"][1]))
 
+	equals(t, false, lists["l3"] == nil)
+	equals(t, "this one is going to be longer -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------", DataToString(lists["l3"][0]))
+	equals(t, "a bit more", DataToString(lists["l3"][1]))
+
+	equals(t, false, lists["l4"] == nil)
+	equals(t, "b", DataToString(lists["l4"][0]))
+	equals(t, "c", DataToString(lists["l4"][1]))
+	equals(t, "d", DataToString(lists["l4"][2]))
+
+	equals(t, false, lists["l5"] == nil)
+	equals(t, "c", DataToString(lists["l5"][0]))
+	equals(t, "a", DataToString(lists["l5"][1]))
+
+	equals(t, false, lists["l6"] == nil)
+	equals(t, "b", DataToString(lists["l6"][0]))
+
+	equals(t, false, lists["l7"] == nil)
+	equals(t, "a", DataToString(lists["l7"][0]))
+	equals(t, "b", DataToString(lists["l7"][1]))
+
+	equals(t, false, lists["l8"] == nil)
+	equals(t, "c", DataToString(lists["l8"][0]))
+	equals(t, int16(1), lists["l8"][1])
+	equals(t, int16(2), lists["l8"][2])
+	equals(t, int16(3), lists["l8"][3])
+	equals(t, int16(4), lists["l8"][4])
+
+	equals(t, false, lists["l9"] == nil)
+	equals(t, int16(10001), lists["l9"][0])
+	equals(t, int16(10002), lists["l9"][1])
+	equals(t, int16(10003), lists["l9"][2])
+	equals(t, int16(10004), lists["l9"][3])
+
+	equals(t, false, lists["l10"] == nil)
+	equals(t, int32(100001), lists["l10"][0])
+	equals(t, int32(100002), lists["l10"][1])
+	equals(t, int32(100003), lists["l10"][2])
+	equals(t, int32(100004), lists["l10"][3])
+
+	equals(t, false, lists["l11"] == nil)
+	equals(t, int64(9999999999), lists["l11"][0])
+	equals(t, int64(9999999998), lists["l11"][1])
+	equals(t, int64(9999999997), lists["l11"][2])
+
+	equals(t, false, lists["l12"] == nil)
+	equals(t, int64(9999999997), lists["l12"][0])
+	equals(t, int64(9999999998), lists["l12"][1])
+	equals(t, int64(9999999999), lists["l12"][2])
+
+	// Strings
 	equals(t, "k1", DataToString(strings[0].Key.Key))
 	equals(t, "ssssssss", DataToString(strings[0].Value))
 
@@ -543,6 +596,22 @@ func TestDumpParserFilters(t *testing.T) {
 
 	equals(t, "n6b", DataToString(strings[17].Key.Key))
 	equals(t, int32(1000000), strings[17].Value.(int32))
+
+	// Sets
+	equals(t, false, sets["set1"] == nil)
+	equals(t, []interface{}{[]byte{0x63}, []byte{0x64}, []byte{0x61}, []byte{0x62}}, sets["set1"])
+
+	equals(t, false, sets["set2"] == nil)
+	equals(t, []interface{}{[]byte{0x64}, []byte{0x61}}, sets["set2"])
+
+	equals(t, false, sets["set3"] == nil)
+	equals(t, []interface{}{[]byte{0x62}}, sets["set3"])
+
+	equals(t, false, sets["set4"] == nil)
+	equals(t, []interface{}{int16(1), int16(2), int16(3), int16(4), int16(5), int16(6), int16(7), int16(8), int16(9), int16(10)}, sets["set4"])
+
+	equals(t, false, sets["set5"] == nil)
+	equals(t, []interface{}{int32(100000), int32(100001), int32(100002), int32(100003)}, sets["set5"])
 }
 
 func TestDumpWithChecksum(t *testing.T) {
