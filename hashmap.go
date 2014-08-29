@@ -4,12 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
 type HashEntry struct {
 	Key   interface{}
 	Value interface{}
+}
+
+func (e HashEntry) String() string {
+	return fmt.Sprintf("HashEntry{Key: %s, Value: %s}", DataToString(e.Key), DataToString(e.Value))
 }
 
 func (p *Parser) readHashMap(key KeyObject, r io.Reader) error {
