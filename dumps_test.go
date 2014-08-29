@@ -410,9 +410,12 @@ func TestDumpParserFilters(t *testing.T) {
 
 	go doParse(t, p, "dumps/parser_filters.rdb")
 
+	strings := make([]StringObject, 0)
 	lists := make(map[string][]interface{}, 0)
 	var currentList string
-	strings := make([]StringObject, 0)
+	sets := make(map[string][]interface{}, 0)
+	var currentSet string
+
 	stop := false
 	for !stop {
 		select {
@@ -441,16 +444,19 @@ func TestDumpParserFilters(t *testing.T) {
 				break
 			}
 			lists[currentList] = append(lists[currentList], v)
-		case _, ok := <-p.ctx.SetMetadataCh:
+		case v, ok := <-p.ctx.SetMetadataCh:
 			if !ok {
 				p.ctx.SetMetadataCh = nil
 				break
 			}
-		case _, ok := <-p.ctx.SetDataCh:
+			sets[DataToString(v.Key.Key)] = make([]interface{}, 0)
+			currentSet = DataToString(v.Key.Key)
+		case v, ok := <-p.ctx.SetDataCh:
 			if !ok {
 				p.ctx.SetDataCh = nil
 				break
 			}
+			sets[currentSet] = append(sets[currentSet], v)
 		case _, ok := <-p.ctx.SortedSetMetadataCh:
 			if !ok {
 				p.ctx.SortedSetMetadataCh = nil
@@ -477,6 +483,12 @@ func TestDumpParserFilters(t *testing.T) {
 			break
 		}
 	}
+
+	equals(t, false, sets["set1"] == nil)
+	equals(t, []interface{}{[]byte{99}, []byte{100}, []byte{97}, []byte{98}}, sets["set1"])
+
+	equals(t, false, sets["set4"] == nil)
+	equals(t, []interface{}{int16(1), int16(2), int16(3), int16(4), int16(5), int16(6), int16(7), int16(8), int16(9), int16(10)}, sets["set4"])
 
 	equals(t, "k1", DataToString(strings[0].Key.Key))
 	equals(t, "ssssssss", DataToString(strings[0].Value))
