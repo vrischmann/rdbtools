@@ -394,6 +394,7 @@ func TestDumpMultipleDatabases(t *testing.T) {
 	equals(t, "second", DataToString(data[2].Value))
 }
 
+// Brace yourself for a VERY long test
 func TestDumpParserFilters(t *testing.T) {
 	p := NewParser(ParserContext{
 		DbCh:                make(chan int),
@@ -415,6 +416,10 @@ func TestDumpParserFilters(t *testing.T) {
 	var currentList string
 	sets := make(map[string][]interface{}, 0)
 	var currentSet string
+	hashes := make(map[string][]HashEntry, 0)
+	var currentHash string
+	sortedSets := make(map[string][]SortedSetEntry, 0)
+	var currentSortedSet string
 
 	stop := false
 	for !stop {
@@ -457,26 +462,32 @@ func TestDumpParserFilters(t *testing.T) {
 				break
 			}
 			sets[currentSet] = append(sets[currentSet], v)
-		case _, ok := <-p.ctx.SortedSetMetadataCh:
+		case v, ok := <-p.ctx.SortedSetMetadataCh:
 			if !ok {
 				p.ctx.SortedSetMetadataCh = nil
 				break
 			}
-		case _, ok := <-p.ctx.SortedSetEntriesCh:
+			sortedSets[DataToString(v.Key.Key)] = make([]SortedSetEntry, 0)
+			currentSortedSet = DataToString(v.Key.Key)
+		case v, ok := <-p.ctx.SortedSetEntriesCh:
 			if !ok {
 				p.ctx.SortedSetEntriesCh = nil
 				break
 			}
-		case _, ok := <-p.ctx.HashMetadataCh:
+			sortedSets[currentSortedSet] = append(sortedSets[currentSortedSet], v)
+		case v, ok := <-p.ctx.HashMetadataCh:
 			if !ok {
 				p.ctx.HashMetadataCh = nil
 				break
 			}
-		case _, ok := <-p.ctx.HashDataCh:
+			hashes[DataToString(v.Key.Key)] = make([]HashEntry, 0)
+			currentHash = DataToString(v.Key.Key)
+		case v, ok := <-p.ctx.HashDataCh:
 			if !ok {
 				p.ctx.HashDataCh = nil
 				break
 			}
+			hashes[currentHash] = append(hashes[currentHash], v)
 		}
 
 		if p.ctx.Invalid() {
@@ -612,6 +623,39 @@ func TestDumpParserFilters(t *testing.T) {
 
 	equals(t, false, sets["set5"] == nil)
 	equals(t, []interface{}{int32(100000), int32(100001), int32(100002), int32(100003)}, sets["set5"])
+
+	// Hashes
+	equals(t, false, hashes["h1"] == nil)
+	equals(t, HashEntry{Key: []byte("c"), Value: []byte("now this is quite a bit longer, but sort of boring....................................................................................................................................................................................................................................................................................................................................................................")}, hashes["h1"][0])
+	equals(t, HashEntry{Key: []byte("a"), Value: []byte("aha")}, hashes["h1"][1])
+	equals(t, HashEntry{Key: []byte("b"), Value: []byte("a bit longer, but not very much")}, hashes["h1"][2])
+
+	equals(t, false, hashes["h2"] == nil)
+	equals(t, HashEntry{Key: []byte("a"), Value: []byte("101010")}, hashes["h2"][0])
+
+	equals(t, false, hashes["h3"] == nil)
+	equals(t, HashEntry{Key: []byte("b"), Value: []byte("b2")}, hashes["h3"][0])
+	equals(t, HashEntry{Key: []byte("c"), Value: []byte("c2")}, hashes["h3"][1])
+	equals(t, HashEntry{Key: []byte("d"), Value: []byte("d")}, hashes["h3"][2])
+
+	// Sorted sets
+	equals(t, false, sortedSets["z1"] == nil)
+	equals(t, SortedSetEntry{Value: []byte{0x61}, Score: 1.0}, sortedSets["z1"][0])
+	equals(t, SortedSetEntry{Value: []byte{0x63}, Score: 13.0}, sortedSets["z1"][1])
+
+	equals(t, false, sortedSets["z2"] == nil)
+	equals(t, SortedSetEntry{Value: int16(1), Score: 1.0}, sortedSets["z2"][0])
+	equals(t, SortedSetEntry{Value: int16(2), Score: 2.0}, sortedSets["z2"][1])
+	equals(t, SortedSetEntry{Value: int16(3), Score: 3.0}, sortedSets["z2"][2])
+
+	equals(t, false, sortedSets["z3"] == nil)
+	equals(t, SortedSetEntry{Value: int16(10002), Score: 10001.0}, sortedSets["z3"][0])
+	equals(t, SortedSetEntry{Value: int16(10003), Score: 10003.0}, sortedSets["z3"][1])
+
+	equals(t, false, sortedSets["z4"] == nil)
+	equals(t, SortedSetEntry{Value: int64(10000000001), Score: 10000000001.0}, sortedSets["z4"][0])
+	equals(t, SortedSetEntry{Value: int64(10000000002), Score: 10000000002.0}, sortedSets["z4"][1])
+	equals(t, SortedSetEntry{Value: int64(10000000003), Score: 10000000003.0}, sortedSets["z4"][2])
 }
 
 func TestDumpWithChecksum(t *testing.T) {
