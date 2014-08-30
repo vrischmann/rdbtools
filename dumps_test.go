@@ -709,31 +709,269 @@ func TestDumpWithChecksum(t *testing.T) {
 }
 
 func TestDumpRegularSet(t *testing.T) {
+	p := NewParser(ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/regular_set.rdb")
+
+	res := make([]string, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SetMetadataCh:
+			if !ok {
+				p.ctx.SetMetadataCh = nil
+				break
+			}
+
+			equals(t, "regular_set", DataToString(md.Key.Key))
+			equals(t, int64(6), md.Len)
+		case d, ok := <-p.ctx.SetDataCh:
+			if !ok {
+				p.ctx.SetDataCh = nil
+				break
+			}
+
+			res = append(res, DataToString(d))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, []string{"beta", "delta", "alpha", "phi", "gamma", "kappa"}, res)
 }
 
 func TestDumpRegularSortedSet(t *testing.T) {
+	p := NewParser(ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	})
 
+	go doParse(t, p, "dumps/regular_sorted_set.rdb")
+
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SortedSetMetadataCh:
+			if !ok {
+				p.ctx.SortedSetMetadataCh = nil
+				break
+			}
+
+			equals(t, "force_sorted_set", DataToString(md.Key.Key))
+			equals(t, int64(500), md.Len)
+		case d, ok := <-p.ctx.SortedSetEntriesCh:
+			if !ok {
+				p.ctx.SortedSetEntriesCh = nil
+				break
+			}
+
+			equals(t, 50, len(DataToString(d.Value)))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
 }
 
 func TestDumpSortedSetAsZipList(t *testing.T) {
+	p := NewParser(ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	})
 
+	go doParse(t, p, "dumps/sorted_set_as_ziplist.rdb")
+
+	res := make([]SortedSetEntry, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.SortedSetMetadataCh:
+			if !ok {
+				p.ctx.SortedSetMetadataCh = nil
+				break
+			}
+
+			equals(t, "sorted_set_as_ziplist", DataToString(md.Key.Key))
+			equals(t, int64(3), md.Len)
+		case d, ok := <-p.ctx.SortedSetEntriesCh:
+			if !ok {
+				p.ctx.SortedSetEntriesCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "8b6ba6718a786daefa69438148361901", DataToString(res[0].Value))
+	equals(t, 1.0, res[0].Score)
+	equals(t, "cb7a24bb7528f934b841b34c3a73e0c7", DataToString(res[1].Value))
+	equals(t, 2.37, res[1].Score)
+	equals(t, "523af537946b79c4f8369ed39ba78605", DataToString(res[2].Value))
+	equals(t, 3.4230, res[2].Score)
 }
 
 func TestDumpUncompressibleStringKeys(t *testing.T) {
+	p := NewParser(ParserContext{
+		StringObjectCh: make(chan StringObject),
+	})
 
+	go doParse(t, p, "dumps/uncompressible_string_keys.rdb")
+
+	res := make([]StringObject, 0)
+	stop := false
+	for !stop {
+		select {
+		case d, ok := <-p.ctx.StringObjectCh:
+			if !ok {
+				p.ctx.StringObjectCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, 16382, len(DataToString(res[0].Key.Key)))
+	equals(t, "Key length more than 6 bits but less than 14 bits", DataToString(res[0].Value))
+	equals(t, 60, len(DataToString(res[1].Key.Key)))
+	equals(t, "Key length within 6 bits", DataToString(res[1].Value))
+	equals(t, 16386, len(DataToString(res[2].Key.Key)))
+	equals(t, "Key length more than 14 bits but less than 32", DataToString(res[2].Value))
 }
 
 func TestDumpZipListThatCompressesEasily(t *testing.T) {
+	p := NewParser(ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/ziplist_that_compresses_easily.rdb")
+
+	res := make([]string, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+
+			equals(t, int64(6), md.Len)
+			equals(t, "ziplist_compresses_easily", DataToString(md.Key.Key))
+		case d, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+
+			res = append(res, DataToString(d))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	j := 0
+	for i := 6; i < 36; i += 6 {
+		equals(t, strings.Repeat("a", i), res[j])
+		j++
+	}
 }
 
 func TestDumpZipListThatDoesntCompress(t *testing.T) {
+	p := NewParser(ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/ziplist_that_doesnt_compress.rdb")
+
+	res := make([]string, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+
+			equals(t, int64(2), md.Len)
+			equals(t, "ziplist_doesnt_compress", DataToString(md.Key.Key))
+		case d, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+
+			res = append(res, DataToString(d))
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "aj2410", res[0])
+	equals(t, "cc953a17a8e096e76a44169ad3f9ac87c5f8248a403274416179aa9fbd852344", res[1])
 }
 
 func TestDumpZipListWithIntegers(t *testing.T) {
+	p := NewParser(ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	})
 
+	go doParse(t, p, "dumps/ziplist_with_integers.rdb")
+
+	res := make([]interface{}, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.ListMetadataCh:
+			if !ok {
+				p.ctx.ListMetadataCh = nil
+				break
+			}
+
+			equals(t, int64(24), md.Len)
+			equals(t, "ziplist_with_integers", DataToString(md.Key.Key))
+		case d, ok := <-p.ctx.ListDataCh:
+			if !ok {
+				p.ctx.ListDataCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, res[0:13])
+	equals(t, []interface{}{int8(-2), int8(13), int8(25), int8(-61), int8(63)}, res[13:18])
+	equals(t, []interface{}{int16(16380), int16(-16000)}, res[18:20])
+	equals(t, []interface{}{int32(65535), int32(-65523), int32(4194304)}, res[20:23])
+	equals(t, int64(9223372036854775807), res[23])
 }
 
 func TestDumpZipMapThatCompressesEasily(t *testing.T) {
