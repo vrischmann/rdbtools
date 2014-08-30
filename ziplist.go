@@ -117,12 +117,13 @@ func (p *Parser) readZipList(r io.Reader, onLenCallback zipListOnLenCallback, on
 			data = tmp
 		} else if flag == 0xF0 {
 			// int24
-			bytes, err := readBytes(r, 3)
+			ab, err := readBytes(r, 3)
 			if err != nil {
 				return err
 			}
 
-			data = (int32(bytes[0]) << 16) | (int32(bytes[1]) << 8) | int32(bytes[2])
+			tmp := uint32(ab[0])<<8 | uint32(ab[1])<<16 | uint32(ab[2])<<24
+			data = int32(tmp) >> 8
 		} else if flag == 0xFE {
 			// int8
 			_, err := io.ReadFull(r, p.scratch[0:1])

@@ -205,7 +205,7 @@ func TestReadZipListInt24(t *testing.T) {
 
 	br.WriteByte(0)    // len prev entry
 	br.WriteByte(0xF0) // Special flag
-	br.Write([]byte{0, 0, 1})
+	br.Write([]byte{13, 0, 0xFF})
 	br.Flush()
 
 	onLenCallback := func(length int64) error {
@@ -214,7 +214,7 @@ func TestReadZipListInt24(t *testing.T) {
 	}
 
 	onElementCallback := func(e interface{}) error {
-		equals(t, int32(1), e)
+		equals(t, int32(-65523), e)
 		return nil
 	}
 
