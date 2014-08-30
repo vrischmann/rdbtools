@@ -975,13 +975,120 @@ func TestDumpZipListWithIntegers(t *testing.T) {
 }
 
 func TestDumpZipMapThatCompressesEasily(t *testing.T) {
+	p := NewParser(ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	})
 
+	go doParse(t, p, "dumps/zipmap_that_compresses_easily.rdb")
+
+	res := make([]HashEntry, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+
+			equals(t, "zipmap_compresses_easily", DataToString(md.Key.Key))
+			equals(t, int64(3), md.Len)
+		case d, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "a", DataToString(res[0].Key))
+	equals(t, "aa", DataToString(res[0].Value))
+	equals(t, "aa", DataToString(res[1].Key))
+	equals(t, "aaaa", DataToString(res[1].Value))
+	equals(t, "aaaaa", DataToString(res[2].Key))
+	equals(t, "aaaaaaaaaaaaaa", DataToString(res[2].Value))
 }
 
 func TestDumpZipMapThatDoesntCompress(t *testing.T) {
+	p := NewParser(ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	})
 
+	go doParse(t, p, "dumps/zipmap_that_doesnt_compress.rdb")
+
+	res := make([]HashEntry, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+
+			equals(t, "zimap_doesnt_compress", DataToString(md.Key.Key))
+			equals(t, int64(2), md.Len)
+		case d, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	equals(t, "MKD1G6", DataToString(res[0].Key))
+	equals(t, "YNNXK", DataToString(res[1].Key))
+	equals(t, "2", DataToString(res[0].Value))
+	equals(t, "F7TI", DataToString(res[1].Value))
 }
 
 func TestDumpZipMapWithBigValues(t *testing.T) {
+	p := NewParser(ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	})
 
+	go doParse(t, p, "dumps/zipmap_with_big_values.rdb")
+
+	res := make([]HashEntry, 0)
+	stop := false
+	for !stop {
+		select {
+		case md, ok := <-p.ctx.HashMetadataCh:
+			if !ok {
+				p.ctx.HashMetadataCh = nil
+				break
+			}
+
+			equals(t, "zipmap_with_big_values", DataToString(md.Key.Key))
+			equals(t, int64(5), md.Len)
+		case d, ok := <-p.ctx.HashDataCh:
+			if !ok {
+				p.ctx.HashDataCh = nil
+				break
+			}
+
+			res = append(res, d)
+		}
+
+		if p.ctx.Invalid() {
+			break
+		}
+	}
+
+	// fmt.Println(res)
 }
