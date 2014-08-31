@@ -8,11 +8,13 @@ import (
 	"io"
 )
 
+// Represents an entry in a hash
 type HashEntry struct {
 	Key   interface{}
 	Value interface{}
 }
 
+// Returns a string visualization of the entry
 func (e HashEntry) String() string {
 	return fmt.Sprintf("HashEntry{Key: %s, Value: %s}", DataToString(e.Key), DataToString(e.Value))
 }

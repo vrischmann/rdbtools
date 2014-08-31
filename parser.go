@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// Parser is the main parser for RDB files
 type Parser struct {
 	ctx     ParserContext
 	r       io.Reader
@@ -15,6 +16,7 @@ type Parser struct {
 }
 
 const (
+	// The last version of RDB files
 	RedisRdbVersion = 6
 )
 
@@ -30,6 +32,7 @@ var (
 	ErrUnexpectedPrevLengthEntryByte = errors.New("unexpected prev length entry byte")
 )
 
+// A ParserContext holds the channels used to receive data from the parser
 type ParserContext struct {
 	DbCh                chan int
 	StringObjectCh      chan StringObject
@@ -78,15 +81,20 @@ func (c *ParserContext) closeChannels() {
 	close(c.endOfFileCh)
 }
 
+// Invalid returns true if the context is invalid (all channels are nil), false otherwise.
+// This is needed to actually terminate parsing if you use a for-select loop
 func (c *ParserContext) Invalid() bool {
 	return c.DbCh == nil && c.StringObjectCh == nil && c.ListMetadataCh == nil && c.ListDataCh == nil && c.SetMetadataCh == nil && c.SetDataCh == nil && c.HashMetadataCh == nil && c.HashDataCh == nil && c.SortedSetMetadataCh == nil && c.SortedSetEntriesCh == nil
 }
 
+// Create a new parser using the provided context
 func NewParser(ctx ParserContext) *Parser {
 	ctx.endOfFileCh = make(chan struct{})
 	return &Parser{ctx: ctx}
 }
 
+// Parse a RDB file reading data from the provided reader r
+// Any error occurring while parsing will be returned here
 func (p *Parser) Parse(r io.Reader) (err error) {
 	cr := newChecksumReader(r)
 

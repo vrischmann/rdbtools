@@ -2,6 +2,8 @@ package rdbtools
 
 import "fmt"
 
+// Cast or convert an interface{} object to a string
+// If the type is not string, fmt.Stringer, []byte or an integer, it panics
 func DataToString(i interface{}) string {
 	switch v := i.(type) {
 	case string:
