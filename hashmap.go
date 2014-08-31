@@ -30,7 +30,7 @@ func (e HashEntry) String() string {
 	return fmt.Sprintf("HashEntry{Key: %s, Value: %s}", DataToString(e.Key), DataToString(e.Value))
 }
 
-func (p *Parser) readHashMap(key KeyObject, r io.Reader) error {
+func (p *parser) readHashMap(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (p *Parser) readHashMap(key KeyObject, r io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readHashMapInZipList(key KeyObject, r io.Reader) error {
+func (p *parser) readHashMapInZipList(key KeyObject, r io.Reader) error {
 	data, err := p.readString(r)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func readZipMapLength(r io.Reader, b byte) (int64, error) {
 }
 
 // Read a hash map encoded as a zipmap (Redis < 2.6)
-func (p *Parser) readZipMap(key KeyObject, r io.Reader) error {
+func (p *parser) readZipMap(key KeyObject, r io.Reader) error {
 	data, err := p.readString(r)
 	if err != nil {
 		return err

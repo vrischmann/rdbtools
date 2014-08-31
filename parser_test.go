@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-func mustParse(t *testing.T, p *Parser, r io.Reader) {
+func mustParse(t *testing.T, p Parser, ctx ParserContext, r io.Reader) {
 	err := p.Parse(r)
 	if err != nil {
-		p.ctx.closeChannels()
+		ctx.closeChannels()
 		t.Fatalf("Error while parsing; err=%s", err)
 	}
 }
@@ -106,44 +106,53 @@ func TestReadDatabase(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			DbCh: make(chan int, 1),
-		},
-	)
+	ctx := ParserContext{DbCh: make(chan int)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		db := <-p.ctx.DbCh
+		db := <-ctx.DbCh
 		equals(t, int(0), db)
 	}()
 
-	copy(p.scratch[:], []byte{0, 0, 0, 0})
 	err := p.readDatabase(bufio.NewReader(&buffer))
 	ok(t, err)
+}
 
-	// No data
-	buffer.Reset()
+func TestReadDatabaseNoData(t *testing.T) {
+	var buffer bytes.Buffer
 
-	copy(p.scratch[:], []byte{0, 0, 0, 0})
-	err = p.readDatabase(bufio.NewReader(&buffer))
+	ctx := ParserContext{DbCh: make(chan int)}
+	p := &parser{ctx: ctx}
+
+	err := p.readDatabase(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
+}
 
-	// No more databases
-	buffer.Reset()
+func TestReadDatabaseNoMoreDatabase(t *testing.T) {
+	var buffer bytes.Buffer
+
+	br := bufio.NewWriter(&buffer)
 	br.WriteByte(0x01)
 	br.Flush()
 
-	copy(p.scratch[:], []byte{0, 0, 0, 0})
-	err = p.readDatabase(bufio.NewReader(&buffer))
-	equals(t, errNoMoreDatabases, err)
+	ctx := ParserContext{DbCh: make(chan int)}
+	p := &parser{ctx: ctx}
 
-	// No db number after flag
-	buffer.Reset()
+	err := p.readDatabase(bufio.NewReader(&buffer))
+	equals(t, errNoMoreDatabases, err)
+}
+
+func TestReadDatabaseNoDbNumber(t *testing.T) {
+	var buffer bytes.Buffer
+
+	br := bufio.NewWriter(&buffer)
 	br.WriteByte(0xFE)
 	br.Flush()
 
-	copy(p.scratch[:], []byte{0, 0, 0, 0})
-	err = p.readDatabase(bufio.NewReader(&buffer))
+	ctx := ParserContext{DbCh: make(chan int)}
+	p := &parser{ctx: ctx}
+
+	err := p.readDatabase(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
 
@@ -151,7 +160,7 @@ func TestReadLen(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	// 6 bits encoding
 	br.WriteByte(1)
@@ -219,7 +228,7 @@ func TestReadDoubleValue(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	// Negative inf
 	br.WriteByte(0xFF)
@@ -285,7 +294,7 @@ func TestReadLZFString(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	data := []byte{1, 97, 97, 224, 246, 0, 1, 97, 97}
 
@@ -327,7 +336,7 @@ func TestReadString(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	// Length prefixed string
 	br.WriteByte(1)
@@ -433,7 +442,7 @@ func TestReadKeyValuePairErrors(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	err := p.readKeyValuePair(bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
@@ -493,14 +502,11 @@ func TestReadKeyValuePairStringEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			StringObjectCh: make(chan StringObject, 1),
-		},
-	)
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		v := <-p.ctx.StringObjectCh
+		v := <-ctx.StringObjectCh
 		equals(t, "a", DataToString(v.Key.Key))
 		equals(t, "b", DataToString(v.Value))
 	}()
@@ -532,14 +538,13 @@ func TestReadKeyValuePairSecondExpiry(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := &parser{ctx: ctx}
 
 	etime := time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	df := func() {
-		v := <-p.ctx.StringObjectCh
+		v := <-ctx.StringObjectCh
 		equals(t, "a", DataToString(v.Key.Key))
 		equals(t, "2100-01-01 00:00:00 +0000 UTC", v.Key.ExpiryTime.UTC().String())
 		equals(t, false, v.Key.Expired())
@@ -565,14 +570,13 @@ func TestReadKeyValuePairMillisecondExpiry(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := &parser{ctx: ctx}
 
 	etime := time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	df := func() {
-		v := <-p.ctx.StringObjectCh
+		v := <-ctx.StringObjectCh
 		equals(t, "a", DataToString(v.Key.Key))
 		equals(t, "2100-01-01 00:00:00 +0000 UTC", v.Key.ExpiryTime.UTC().String())
 		equals(t, false, v.Key.Expired())
@@ -598,21 +602,20 @@ func TestReadKeyValuePairListEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			ListMetadataCh: make(chan ListMetadata, 1),
-			ListDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.ListMetadataCh
+		l := <-ctx.ListMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.ListDataCh
+		v := <-ctx.ListDataCh
 		equals(t, "v", DataToString(v))
 	}
 
@@ -651,21 +654,20 @@ func TestReadKeyValuePairSetEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.SetMetadataCh
+		l := <-ctx.SetMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.SetDataCh
+		v := <-ctx.SetDataCh
 		equals(t, "v", DataToString(v))
 	}
 
@@ -704,21 +706,20 @@ func TestReadKeyValuePairSortedSetEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.SortedSetMetadataCh
+		l := <-ctx.SortedSetMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.SortedSetEntriesCh
+		v := <-ctx.SortedSetEntriesCh
 		equals(t, "v", DataToString(v.Value))
 		equals(t, 20.1, v.Score)
 	}
@@ -762,21 +763,20 @@ func TestReadKeyValuePairHashMapEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.HashMetadataCh
+		l := <-ctx.HashMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.HashDataCh
+		v := <-ctx.HashDataCh
 		equals(t, "a", DataToString(v.Key))
 		equals(t, "b", DataToString(v.Value))
 	}
@@ -819,21 +819,20 @@ func TestReadKeyValuePairZipMapEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.HashMetadataCh
+		l := <-ctx.HashMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.HashDataCh
+		v := <-ctx.HashDataCh
 		equals(t, "a", DataToString(v.Key))
 		equals(t, "b", DataToString(v.Value))
 	}
@@ -883,21 +882,20 @@ func TestReadKeyValuePairZipListEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			ListMetadataCh: make(chan ListMetadata, 1),
-			ListDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.ListMetadataCh
+		l := <-ctx.ListMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.ListDataCh
+		v := <-ctx.ListDataCh
 		equals(t, "a", DataToString(v))
 	}
 
@@ -944,21 +942,20 @@ func TestReadKeyValuePairIntSetEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.SetMetadataCh
+		l := <-ctx.SetMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.SetDataCh
+		v := <-ctx.SetDataCh
 		equals(t, int16(1), v)
 	}
 
@@ -999,21 +996,20 @@ func TestReadKeyValuePairSortedSetInZipListEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.SortedSetMetadataCh
+		l := <-ctx.SortedSetMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.SortedSetEntriesCh
+		v := <-ctx.SortedSetEntriesCh
 		equals(t, "a", DataToString(v.Value))
 		equals(t, 1.2, v.Score)
 	}
@@ -1067,21 +1063,20 @@ func TestReadKeyValuePairHashMapInZipListEncoding(t *testing.T) {
 
 	br := bufio.NewWriter(&buffer)
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	mf := func() {
-		l := <-p.ctx.HashMetadataCh
+		l := <-ctx.HashMetadataCh
 		equals(t, "a", DataToString(l.Key))
 		equals(t, int64(1), l.Len)
 	}
 
 	df := func() {
-		v := <-p.ctx.HashDataCh
+		v := <-ctx.HashDataCh
 		equals(t, "a", DataToString(v.Key))
 		equals(t, "b", DataToString(v.Value))
 	}
@@ -1140,7 +1135,7 @@ func TestReadKeyValuePairUnknownValueType(t *testing.T) {
 	br.WriteByte('a')
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readKeyValuePair(bufio.NewReader(&buffer))
 	equals(t, ErrUnknownValueType, err)
 }
@@ -1148,11 +1143,12 @@ func TestReadKeyValuePairUnknownValueType(t *testing.T) {
 func TestParse(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{
-		DbCh:           make(chan int, 1),
-		StringObjectCh: make(chan StringObject, 1),
-		endOfFileCh:    make(chan struct{}, 1),
-	})
+	ctx := ParserContext{
+		DbCh:           make(chan int),
+		StringObjectCh: make(chan StringObject),
+		endOfFileCh:    make(chan struct{}),
+	}
+	p := &parser{ctx: ctx}
 
 	br := bufio.NewWriter(&buffer)
 	br.WriteString("REDIS")  // magic string
@@ -1167,27 +1163,27 @@ func TestParse(t *testing.T) {
 	br.WriteByte(0xFF)       // end of file
 	br.Flush()
 
-	go mustParse(t, p, bufio.NewReader(&buffer))
+	go mustParse(t, p, ctx, bufio.NewReader(&buffer))
 
 	stop := false
 	for !stop {
 		select {
-		case v, ok := <-p.ctx.StringObjectCh:
+		case v, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 			equals(t, "a", DataToString(v.Key.Key))
 			equals(t, "foobar", DataToString(v.Value))
-		case v, ok := <-p.ctx.DbCh:
+		case v, ok := <-ctx.DbCh:
 			if !ok {
-				p.ctx.DbCh = nil
+				ctx.DbCh = nil
 				break
 			}
 			equals(t, int(0), v)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -1196,7 +1192,7 @@ func TestParse(t *testing.T) {
 func TestParseAllTypes(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		DbCh:                make(chan int),
 		StringObjectCh:      make(chan StringObject),
 		ListMetadataCh:      make(chan ListMetadata),
@@ -1207,7 +1203,9 @@ func TestParseAllTypes(t *testing.T) {
 		HashDataCh:          make(chan HashEntry),
 		SortedSetMetadataCh: make(chan SortedSetMetadata),
 		SortedSetEntriesCh:  make(chan SortedSetEntry),
-	})
+		endOfFileCh:         make(chan struct{}),
+	}
+	p := &parser{ctx: ctx}
 
 	br := bufio.NewWriter(&buffer)
 	br.WriteString("REDIS") // magic string
@@ -1244,81 +1242,81 @@ func TestParseAllTypes(t *testing.T) {
 	br.WriteByte(0xFF)            // end of file
 	br.Flush()
 
-	go mustParse(t, p, bufio.NewReader(&buffer))
+	go mustParse(t, p, ctx, bufio.NewReader(&buffer))
 
 	stop := false
 	for !stop {
 		select {
-		case v, ok := <-p.ctx.DbCh:
+		case v, ok := <-ctx.DbCh:
 			if !ok {
-				p.ctx.DbCh = nil
+				ctx.DbCh = nil
 				break
 			}
 			equals(t, int(0), v)
-		case v, ok := <-p.ctx.StringObjectCh:
+		case v, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 			equals(t, "a", DataToString(v.Key.Key))
 			equals(t, "foobar", DataToString(v.Value))
-		case v, ok := <-p.ctx.ListMetadataCh:
+		case v, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 			equals(t, int64(1), v.Len)
 			equals(t, "b", DataToString(v.Key.Key))
-		case v, ok := <-p.ctx.ListDataCh:
+		case v, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 			equals(t, "Z", DataToString(v))
-		case v, ok := <-p.ctx.SetMetadataCh:
+		case v, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 			equals(t, int64(1), v.Len)
 			equals(t, "c", DataToString(v.Key.Key))
-		case v, ok := <-p.ctx.SetDataCh:
+		case v, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 			equals(t, "Z", DataToString(v))
-		case v, ok := <-p.ctx.SortedSetMetadataCh:
+		case v, ok := <-ctx.SortedSetMetadataCh:
 			if !ok {
-				p.ctx.SortedSetMetadataCh = nil
+				ctx.SortedSetMetadataCh = nil
 				break
 			}
 			equals(t, int64(1), v.Len)
 			equals(t, "d", DataToString(v.Key.Key))
-		case v, ok := <-p.ctx.SortedSetEntriesCh:
+		case v, ok := <-ctx.SortedSetEntriesCh:
 			if !ok {
-				p.ctx.SortedSetEntriesCh = nil
+				ctx.SortedSetEntriesCh = nil
 				break
 			}
 			equals(t, "Z", DataToString(v.Value))
 			equals(t, 0.1, v.Score)
-		case v, ok := <-p.ctx.HashMetadataCh:
+		case v, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 			equals(t, int64(1), v.Len)
 			equals(t, "e", DataToString(v.Key.Key))
-		case v, ok := <-p.ctx.HashDataCh:
+		case v, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 			equals(t, "Z", DataToString(v.Key))
 			equals(t, "Z1", DataToString(v.Value))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -1365,12 +1363,11 @@ func TestParseNoDatabaseNumber(t *testing.T) {
 func TestParseNoKeyValuePair(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{
-		DbCh: make(chan int, 1),
-	})
+	ctx := ParserContext{DbCh: make(chan int)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		v := <-p.ctx.DbCh
+		v := <-ctx.DbCh
 		equals(t, int(0), v)
 	}()
 

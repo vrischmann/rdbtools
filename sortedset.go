@@ -30,7 +30,7 @@ func (e SortedSetEntry) String() string {
 	return fmt.Sprintf("SortedSetEntry{Value: %s, Score: %0.4f}", DataToString(e.Value), e.Score)
 }
 
-func (p *Parser) readSortedSet(key KeyObject, r io.Reader) error {
+func (p *parser) readSortedSet(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (p *Parser) readSortedSet(key KeyObject, r io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readSortedSetInZipList(key KeyObject, r io.Reader) error {
+func (p *parser) readSortedSetInZipList(key KeyObject, r io.Reader) error {
 	data, err := p.readString(r)
 	if err != nil {
 		return err

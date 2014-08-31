@@ -24,22 +24,21 @@ func TestReadHashMap(t *testing.T) {
 	br.WriteString("bar") // value
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readHashMap)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "foo", DataToString(d.Key))
 			equals(t, "bar", DataToString(d.Value))
 		case <-end:
@@ -51,7 +50,7 @@ func TestReadHashMap(t *testing.T) {
 func TestReadHashMapNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -63,7 +62,7 @@ func TestReadHashMapEncodedLen(t *testing.T) {
 	br.WriteByte(0xC0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readHashMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
@@ -75,14 +74,11 @@ func TestReadHashMapNoEntryKey(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -100,14 +96,11 @@ func TestReadHashMapNoEntryValue(t *testing.T) {
 	br.WriteString("a")
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata, 1)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -134,22 +127,21 @@ func TestReadHashMapInZipList(t *testing.T) {
 
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readHashMapInZipList)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "foobar", DataToString(d.Key))
 			equals(t, "foobar", DataToString(d.Value))
 		case <-end:
@@ -161,7 +153,7 @@ func TestReadHashMapInZipList(t *testing.T) {
 func TestReadHashMapInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readHashMapInZipList(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -174,7 +166,7 @@ func TestReadHashMapInZipListEmptyZipList(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readHashMapInZipList(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, "unexpected EOF", err.Error())
 }
@@ -194,22 +186,21 @@ func TestReadZipMap(t *testing.T) {
 	br.WriteByte(0xFF) // end of map
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readZipMap)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "a", DataToString(d.Key))
 			equals(t, "b", DataToString(d.Value))
 		case <-end:
@@ -234,22 +225,21 @@ func TestReadZipMapBigKey(t *testing.T) {
 	br.WriteByte(0xFF) // end of map
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readZipMap)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "a", DataToString(d.Key))
 			equals(t, "b", DataToString(d.Value))
 		case <-end:
@@ -273,22 +263,21 @@ func TestReadZipMapBigMapLen(t *testing.T) {
 	br.WriteByte(0xFF) // end of map
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readZipMap)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "a", DataToString(d.Key))
 			equals(t, "b", DataToString(d.Value))
 		case <-end:
@@ -313,22 +302,21 @@ func TestReadZipMapSkipFreeBytes(t *testing.T) {
 	br.WriteByte(0xFF)           // end of map
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "hashmap", p.readZipMap)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.HashMetadataCh:
+		case md := <-ctx.HashMetadataCh:
 			equals(t, "hashmap", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.HashDataCh:
+		case d := <-ctx.HashDataCh:
 			equals(t, "a", DataToString(d.Key))
 			equals(t, "b", DataToString(d.Value))
 		case <-end:
@@ -340,7 +328,7 @@ func TestReadZipMapSkipFreeBytes(t *testing.T) {
 func TestReadZipMapNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -353,7 +341,7 @@ func TestReadZipMapNoMapLen(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -367,7 +355,7 @@ func TestReadZipMapNoFirstByte(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readZipMap(KeyObject{Key: []byte("hashmap")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -383,14 +371,11 @@ func TestReadZipMapFailEntryKeyLength(t *testing.T) {
 	br.WriteByte(0xFF)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -409,14 +394,11 @@ func TestReadZipMapFailEntryKeyData(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -436,14 +418,11 @@ func TestReadZipMapFailEntryValByte(t *testing.T) {
 	br.WriteByte('a')
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -465,14 +444,11 @@ func TestReadZipMapFailEntryValLength(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -493,14 +469,11 @@ func TestReadZipMapFailEntryFreeByte(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -522,14 +495,11 @@ func TestReadZipMapFailEntryValData(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -552,14 +522,11 @@ func TestReadZipMapFailSkipFreeBytes(t *testing.T) {
 	br.WriteByte('b')
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-		},
-	)
+	ctx := ParserContext{HashMetadataCh: make(chan HashMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.HashMetadataCh
+		md := <-ctx.HashMetadataCh
 		equals(t, "hashmap", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -582,21 +549,20 @@ func TestReadZipMapFailLastReadByte(t *testing.T) {
 	br.WriteByte('b')
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			HashMetadataCh: make(chan HashMetadata, 1),
-			HashDataCh:     make(chan HashEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		HashMetadataCh: make(chan HashMetadata),
+		HashDataCh:     make(chan HashEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
 		stop := false
 		for !stop {
 			select {
-			case md := <-p.ctx.HashMetadataCh:
+			case md := <-ctx.HashMetadataCh:
 				equals(t, "hashmap", DataToString(md.Key))
 				equals(t, int64(1), md.Len)
-			case d := <-p.ctx.HashDataCh:
+			case d := <-ctx.HashDataCh:
 				equals(t, "a", DataToString(d.Key))
 				equals(t, "b", DataToString(d.Value))
 			case <-end:

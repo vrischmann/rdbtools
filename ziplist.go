@@ -8,7 +8,7 @@ import (
 type zipListOnLenCallback func(length int64) error
 type zipListOnElementCallback func(element interface{}) error
 
-func (p *Parser) readZipList(r io.Reader, onLenCallback zipListOnLenCallback, onElementCallback zipListOnElementCallback) error {
+func (p *parser) readZipList(r io.Reader, onLenCallback zipListOnLenCallback, onElementCallback zipListOnElementCallback) error {
 	var zlBytes int32
 	var zlTail int32
 	var zlLen int16

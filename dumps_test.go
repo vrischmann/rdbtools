@@ -18,41 +18,42 @@ func mustOpen(t *testing.T, path string) *os.File {
 	return f
 }
 
-func doParse(t *testing.T, p *Parser, path string) {
+func doParse(t *testing.T, p Parser, ctx ParserContext, path string) {
 	err := p.Parse(mustOpen(t, path))
 	if err != nil {
-		p.ctx.closeChannels()
+		ctx.closeChannels()
 		t.Fatalf("Error while parsing '%s'; err=%s", path, err)
 	}
 }
 
 func TestDumpDictionary(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
 		HashDataCh:     make(chan HashEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/dictionary.rdb")
+	go doParse(t, p, ctx, "dumps/dictionary.rdb")
 
 	var i, j int
 	stop := false
 	for !stop {
 		select {
-		case _, ok := <-p.ctx.HashMetadataCh:
+		case _, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 			i++
-		case _, ok := <-p.ctx.HashDataCh:
+		case _, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 			j++
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -62,18 +63,17 @@ func TestDumpDictionary(t *testing.T) {
 }
 
 func TestDumpEasilyCompressibleStringKey(t *testing.T) {
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/easily_compressible_string_key.rdb")
+	go doParse(t, p, ctx, "dumps/easily_compressible_string_key.rdb")
 
 	stop := false
 	for !stop {
 		select {
-		case d, ok := <-p.ctx.StringObjectCh:
+		case d, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 
@@ -82,46 +82,48 @@ func TestDumpEasilyCompressibleStringKey(t *testing.T) {
 			equals(t, "Key that redis should compress easily", DataToString(d.Value))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
 }
 
 func TestDumpEmptyDatabase(t *testing.T) {
-	p := NewParser(ParserContext{})
+	ctx := ParserContext{}
+	p := NewParser(ctx)
 
-	doParse(t, p, "dumps/empty_database.rdb")
+	doParse(t, p, ctx, "dumps/empty_database.rdb")
 }
 
 func TestDumpHashAsZipList(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
 		HashDataCh:     make(chan HashEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/hash_as_ziplist.rdb")
+	go doParse(t, p, ctx, "dumps/hash_as_ziplist.rdb")
 
 	res := make([]HashEntry, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.HashMetadataCh:
+		case md, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 			equals(t, int64(3), md.Len)
 			equals(t, "zipmap_compresses_easily", DataToString(md.Key.Key))
-		case d, ok := <-p.ctx.HashDataCh:
+		case d, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -135,26 +137,25 @@ func TestDumpHashAsZipList(t *testing.T) {
 }
 
 func TestDumpIntegerKeys(t *testing.T) {
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/integer_keys.rdb")
+	go doParse(t, p, ctx, "dumps/integer_keys.rdb")
 
 	res := make([]StringObject, 0)
 	stop := false
 	for !stop {
 		select {
-		case d, ok := <-p.ctx.StringObjectCh:
+		case d, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -174,35 +175,36 @@ func TestDumpIntegerKeys(t *testing.T) {
 }
 
 func TestDumpIntSet16(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SetMetadataCh: make(chan SetMetadata),
 		SetDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/intset_16.rdb")
+	go doParse(t, p, ctx, "dumps/intset_16.rdb")
 
 	res := make([]int16, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SetMetadataCh:
+		case md, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 
 			equals(t, "intset_16", DataToString(md.Key))
 			equals(t, int64(3), md.Len)
-		case d, ok := <-p.ctx.SetDataCh:
+		case d, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 
 			res = append(res, d.(int16))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -213,35 +215,36 @@ func TestDumpIntSet16(t *testing.T) {
 }
 
 func TestDumpIntSet32(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SetMetadataCh: make(chan SetMetadata),
 		SetDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/intset_32.rdb")
+	go doParse(t, p, ctx, "dumps/intset_32.rdb")
 
 	res := make([]int32, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SetMetadataCh:
+		case md, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 
 			equals(t, "intset_32", DataToString(md.Key))
 			equals(t, int64(3), md.Len)
-		case d, ok := <-p.ctx.SetDataCh:
+		case d, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 
 			res = append(res, d.(int32))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -252,35 +255,36 @@ func TestDumpIntSet32(t *testing.T) {
 }
 
 func TestDumpIntSet64(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SetMetadataCh: make(chan SetMetadata),
 		SetDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/intset_64.rdb")
+	go doParse(t, p, ctx, "dumps/intset_64.rdb")
 
 	res := make([]int64, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SetMetadataCh:
+		case md, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 
 			equals(t, "intset_64", DataToString(md.Key))
 			equals(t, int64(3), md.Len)
-		case d, ok := <-p.ctx.SetDataCh:
+		case d, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 
 			res = append(res, d.(int64))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -291,18 +295,17 @@ func TestDumpIntSet64(t *testing.T) {
 }
 
 func TestDumpKeysWithExpiry(t *testing.T) {
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/keys_with_expiry.rdb")
+	go doParse(t, p, ctx, "dumps/keys_with_expiry.rdb")
 
 	stop := false
 	for !stop {
 		select {
-		case v, ok := <-p.ctx.StringObjectCh:
+		case v, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 			equals(t, "expires_ms_precision", DataToString(v.Key.Key))
@@ -310,35 +313,36 @@ func TestDumpKeysWithExpiry(t *testing.T) {
 			equals(t, "2022-12-25 10:11:12.573 UTC", DataToString(v.Value))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
 }
 
 func TestDumpLinkedList(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		ListMetadataCh: make(chan ListMetadata),
 		ListDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/linkedlist.rdb")
+	go doParse(t, p, ctx, "dumps/linkedlist.rdb")
 
 	i := 0
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.ListMetadataCh:
+		case md, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 
 			equals(t, "force_linkedlist", DataToString(md.Key))
 			equals(t, int64(1000), md.Len)
-		case d, ok := <-p.ctx.ListDataCh:
+		case d, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 
@@ -346,7 +350,7 @@ func TestDumpLinkedList(t *testing.T) {
 			i++
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -355,35 +359,36 @@ func TestDumpLinkedList(t *testing.T) {
 }
 
 func TestDumpMultipleDatabases(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		DbCh:           make(chan int),
 		StringObjectCh: make(chan StringObject),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/multiple_databases.rdb")
+	go doParse(t, p, ctx, "dumps/multiple_databases.rdb")
 
 	data := make(map[int]StringObject)
 	var db int
 	stop := false
 	for !stop {
 		select {
-		case d, ok := <-p.ctx.DbCh:
+		case d, ok := <-ctx.DbCh:
 			if !ok {
-				p.ctx.DbCh = nil
+				ctx.DbCh = nil
 				break
 			}
 
 			db = d
-		case d, ok := <-p.ctx.StringObjectCh:
+		case d, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 
 			data[db] = d
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -396,7 +401,7 @@ func TestDumpMultipleDatabases(t *testing.T) {
 
 // Brace yourself for a VERY long test
 func TestDumpParserFilters(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		DbCh:                make(chan int),
 		StringObjectCh:      make(chan StringObject),
 		ListMetadataCh:      make(chan ListMetadata),
@@ -407,9 +412,10 @@ func TestDumpParserFilters(t *testing.T) {
 		HashDataCh:          make(chan HashEntry),
 		SortedSetMetadataCh: make(chan SortedSetMetadata),
 		SortedSetEntriesCh:  make(chan SortedSetEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/parser_filters.rdb")
+	go doParse(t, p, ctx, "dumps/parser_filters.rdb")
 
 	strings := make([]StringObject, 0)
 	lists := make(map[string][]interface{}, 0)
@@ -424,73 +430,73 @@ func TestDumpParserFilters(t *testing.T) {
 	stop := false
 	for !stop {
 		select {
-		case v, ok := <-p.ctx.DbCh:
+		case v, ok := <-ctx.DbCh:
 			if !ok {
-				p.ctx.DbCh = nil
+				ctx.DbCh = nil
 				break
 			}
 			equals(t, int(0), v)
-		case v, ok := <-p.ctx.StringObjectCh:
+		case v, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 			strings = append(strings, v)
-		case v, ok := <-p.ctx.ListMetadataCh:
+		case v, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 			lists[DataToString(v.Key.Key)] = make([]interface{}, 0)
 			currentList = DataToString(v.Key.Key)
-		case v, ok := <-p.ctx.ListDataCh:
+		case v, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 			lists[currentList] = append(lists[currentList], v)
-		case v, ok := <-p.ctx.SetMetadataCh:
+		case v, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 			sets[DataToString(v.Key.Key)] = make([]interface{}, 0)
 			currentSet = DataToString(v.Key.Key)
-		case v, ok := <-p.ctx.SetDataCh:
+		case v, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 			sets[currentSet] = append(sets[currentSet], v)
-		case v, ok := <-p.ctx.SortedSetMetadataCh:
+		case v, ok := <-ctx.SortedSetMetadataCh:
 			if !ok {
-				p.ctx.SortedSetMetadataCh = nil
+				ctx.SortedSetMetadataCh = nil
 				break
 			}
 			sortedSets[DataToString(v.Key.Key)] = make([]SortedSetEntry, 0)
 			currentSortedSet = DataToString(v.Key.Key)
-		case v, ok := <-p.ctx.SortedSetEntriesCh:
+		case v, ok := <-ctx.SortedSetEntriesCh:
 			if !ok {
-				p.ctx.SortedSetEntriesCh = nil
+				ctx.SortedSetEntriesCh = nil
 				break
 			}
 			sortedSets[currentSortedSet] = append(sortedSets[currentSortedSet], v)
-		case v, ok := <-p.ctx.HashMetadataCh:
+		case v, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 			hashes[DataToString(v.Key.Key)] = make([]HashEntry, 0)
 			currentHash = DataToString(v.Key.Key)
-		case v, ok := <-p.ctx.HashDataCh:
+		case v, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 			hashes[currentHash] = append(hashes[currentHash], v)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -659,26 +665,25 @@ func TestDumpParserFilters(t *testing.T) {
 }
 
 func TestDumpWithChecksum(t *testing.T) {
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/rdb_version_5_with_checksum.rdb")
+	go doParse(t, p, ctx, "dumps/rdb_version_5_with_checksum.rdb")
 
 	stop := false
 	res := make([]StringObject, 0)
 	for !stop {
 		select {
-		case v, ok := <-p.ctx.StringObjectCh:
+		case v, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 
 			res = append(res, v)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -709,35 +714,36 @@ func TestDumpWithChecksum(t *testing.T) {
 }
 
 func TestDumpRegularSet(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SetMetadataCh: make(chan SetMetadata),
 		SetDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/regular_set.rdb")
+	go doParse(t, p, ctx, "dumps/regular_set.rdb")
 
 	res := make([]string, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SetMetadataCh:
+		case md, ok := <-ctx.SetMetadataCh:
 			if !ok {
-				p.ctx.SetMetadataCh = nil
+				ctx.SetMetadataCh = nil
 				break
 			}
 
 			equals(t, "regular_set", DataToString(md.Key.Key))
 			equals(t, int64(6), md.Len)
-		case d, ok := <-p.ctx.SetDataCh:
+		case d, ok := <-ctx.SetDataCh:
 			if !ok {
-				p.ctx.SetDataCh = nil
+				ctx.SetDataCh = nil
 				break
 			}
 
 			res = append(res, DataToString(d))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -746,69 +752,71 @@ func TestDumpRegularSet(t *testing.T) {
 }
 
 func TestDumpRegularSortedSet(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SortedSetMetadataCh: make(chan SortedSetMetadata),
 		SortedSetEntriesCh:  make(chan SortedSetEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/regular_sorted_set.rdb")
+	go doParse(t, p, ctx, "dumps/regular_sorted_set.rdb")
 
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SortedSetMetadataCh:
+		case md, ok := <-ctx.SortedSetMetadataCh:
 			if !ok {
-				p.ctx.SortedSetMetadataCh = nil
+				ctx.SortedSetMetadataCh = nil
 				break
 			}
 
 			equals(t, "force_sorted_set", DataToString(md.Key.Key))
 			equals(t, int64(500), md.Len)
-		case d, ok := <-p.ctx.SortedSetEntriesCh:
+		case d, ok := <-ctx.SortedSetEntriesCh:
 			if !ok {
-				p.ctx.SortedSetEntriesCh = nil
+				ctx.SortedSetEntriesCh = nil
 				break
 			}
 
 			equals(t, 50, len(DataToString(d.Value)))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
 }
 
 func TestDumpSortedSetAsZipList(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		SortedSetMetadataCh: make(chan SortedSetMetadata),
 		SortedSetEntriesCh:  make(chan SortedSetEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/sorted_set_as_ziplist.rdb")
+	go doParse(t, p, ctx, "dumps/sorted_set_as_ziplist.rdb")
 
 	res := make([]SortedSetEntry, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.SortedSetMetadataCh:
+		case md, ok := <-ctx.SortedSetMetadataCh:
 			if !ok {
-				p.ctx.SortedSetMetadataCh = nil
+				ctx.SortedSetMetadataCh = nil
 				break
 			}
 
 			equals(t, "sorted_set_as_ziplist", DataToString(md.Key.Key))
 			equals(t, int64(3), md.Len)
-		case d, ok := <-p.ctx.SortedSetEntriesCh:
+		case d, ok := <-ctx.SortedSetEntriesCh:
 			if !ok {
-				p.ctx.SortedSetEntriesCh = nil
+				ctx.SortedSetEntriesCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -822,26 +830,25 @@ func TestDumpSortedSetAsZipList(t *testing.T) {
 }
 
 func TestDumpUncompressibleStringKeys(t *testing.T) {
-	p := NewParser(ParserContext{
-		StringObjectCh: make(chan StringObject),
-	})
+	ctx := ParserContext{StringObjectCh: make(chan StringObject)}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/uncompressible_string_keys.rdb")
+	go doParse(t, p, ctx, "dumps/uncompressible_string_keys.rdb")
 
 	res := make([]StringObject, 0)
 	stop := false
 	for !stop {
 		select {
-		case d, ok := <-p.ctx.StringObjectCh:
+		case d, ok := <-ctx.StringObjectCh:
 			if !ok {
-				p.ctx.StringObjectCh = nil
+				ctx.StringObjectCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -855,35 +862,36 @@ func TestDumpUncompressibleStringKeys(t *testing.T) {
 }
 
 func TestDumpZipListThatCompressesEasily(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		ListMetadataCh: make(chan ListMetadata),
 		ListDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/ziplist_that_compresses_easily.rdb")
+	go doParse(t, p, ctx, "dumps/ziplist_that_compresses_easily.rdb")
 
 	res := make([]string, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.ListMetadataCh:
+		case md, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 
 			equals(t, int64(6), md.Len)
 			equals(t, "ziplist_compresses_easily", DataToString(md.Key.Key))
-		case d, ok := <-p.ctx.ListDataCh:
+		case d, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 
 			res = append(res, DataToString(d))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -896,35 +904,36 @@ func TestDumpZipListThatCompressesEasily(t *testing.T) {
 }
 
 func TestDumpZipListThatDoesntCompress(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		ListMetadataCh: make(chan ListMetadata),
 		ListDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/ziplist_that_doesnt_compress.rdb")
+	go doParse(t, p, ctx, "dumps/ziplist_that_doesnt_compress.rdb")
 
 	res := make([]string, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.ListMetadataCh:
+		case md, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 
 			equals(t, int64(2), md.Len)
 			equals(t, "ziplist_doesnt_compress", DataToString(md.Key.Key))
-		case d, ok := <-p.ctx.ListDataCh:
+		case d, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 
 			res = append(res, DataToString(d))
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -934,35 +943,36 @@ func TestDumpZipListThatDoesntCompress(t *testing.T) {
 }
 
 func TestDumpZipListWithIntegers(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		ListMetadataCh: make(chan ListMetadata),
 		ListDataCh:     make(chan interface{}),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/ziplist_with_integers.rdb")
+	go doParse(t, p, ctx, "dumps/ziplist_with_integers.rdb")
 
 	res := make([]interface{}, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.ListMetadataCh:
+		case md, ok := <-ctx.ListMetadataCh:
 			if !ok {
-				p.ctx.ListMetadataCh = nil
+				ctx.ListMetadataCh = nil
 				break
 			}
 
 			equals(t, int64(24), md.Len)
 			equals(t, "ziplist_with_integers", DataToString(md.Key.Key))
-		case d, ok := <-p.ctx.ListDataCh:
+		case d, ok := <-ctx.ListDataCh:
 			if !ok {
-				p.ctx.ListDataCh = nil
+				ctx.ListDataCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -975,35 +985,36 @@ func TestDumpZipListWithIntegers(t *testing.T) {
 }
 
 func TestDumpZipMapThatCompressesEasily(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
 		HashDataCh:     make(chan HashEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/zipmap_that_compresses_easily.rdb")
+	go doParse(t, p, ctx, "dumps/zipmap_that_compresses_easily.rdb")
 
 	res := make([]HashEntry, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.HashMetadataCh:
+		case md, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 
 			equals(t, "zipmap_compresses_easily", DataToString(md.Key.Key))
 			equals(t, int64(3), md.Len)
-		case d, ok := <-p.ctx.HashDataCh:
+		case d, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -1017,35 +1028,36 @@ func TestDumpZipMapThatCompressesEasily(t *testing.T) {
 }
 
 func TestDumpZipMapThatDoesntCompress(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
 		HashDataCh:     make(chan HashEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/zipmap_that_doesnt_compress.rdb")
+	go doParse(t, p, ctx, "dumps/zipmap_that_doesnt_compress.rdb")
 
 	res := make([]HashEntry, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.HashMetadataCh:
+		case md, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 
 			equals(t, "zimap_doesnt_compress", DataToString(md.Key.Key))
 			equals(t, int64(2), md.Len)
-		case d, ok := <-p.ctx.HashDataCh:
+		case d, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}
@@ -1057,35 +1069,36 @@ func TestDumpZipMapThatDoesntCompress(t *testing.T) {
 }
 
 func TestDumpZipMapWithBigValues(t *testing.T) {
-	p := NewParser(ParserContext{
+	ctx := ParserContext{
 		HashMetadataCh: make(chan HashMetadata),
 		HashDataCh:     make(chan HashEntry),
-	})
+	}
+	p := NewParser(ctx)
 
-	go doParse(t, p, "dumps/zipmap_with_big_values.rdb")
+	go doParse(t, p, ctx, "dumps/zipmap_with_big_values.rdb")
 
 	res := make([]HashEntry, 0)
 	stop := false
 	for !stop {
 		select {
-		case md, ok := <-p.ctx.HashMetadataCh:
+		case md, ok := <-ctx.HashMetadataCh:
 			if !ok {
-				p.ctx.HashMetadataCh = nil
+				ctx.HashMetadataCh = nil
 				break
 			}
 
 			equals(t, "zipmap_with_big_values", DataToString(md.Key.Key))
 			equals(t, int64(5), md.Len)
-		case d, ok := <-p.ctx.HashDataCh:
+		case d, ok := <-ctx.HashDataCh:
 			if !ok {
-				p.ctx.HashDataCh = nil
+				ctx.HashDataCh = nil
 				break
 			}
 
 			res = append(res, d)
 		}
 
-		if p.ctx.Invalid() {
+		if ctx.Invalid() {
 			break
 		}
 	}

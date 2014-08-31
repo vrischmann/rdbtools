@@ -19,7 +19,7 @@ func (m SetMetadata) String() string {
 	return fmt.Sprintf("SetMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
 }
 
-func (p *Parser) readSet(key KeyObject, r io.Reader) error {
+func (p *parser) readSet(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (p *Parser) readSet(key KeyObject, r io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readIntSet(key KeyObject, r io.Reader) error {
+func (p *parser) readIntSet(key KeyObject, r io.Reader) error {
 	data, err := p.readString(r)
 	if err != nil {
 		return err

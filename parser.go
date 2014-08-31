@@ -8,8 +8,12 @@ import (
 	"strconv"
 )
 
+type Parser interface {
+	Parse(r io.Reader) (err error)
+}
+
 // Parser is the main parser for RDB files
-type Parser struct {
+type parser struct {
 	ctx     ParserContext
 	r       io.Reader
 	scratch [4]byte
@@ -88,14 +92,14 @@ func (c *ParserContext) Invalid() bool {
 }
 
 // Create a new parser using the provided context
-func NewParser(ctx ParserContext) *Parser {
+func NewParser(ctx ParserContext) Parser {
 	ctx.endOfFileCh = make(chan struct{})
-	return &Parser{ctx: ctx}
+	return &parser{ctx: ctx}
 }
 
 // Parse a RDB file reading data from the provided reader r
 // Any error occurring while parsing will be returned here
-func (p *Parser) Parse(r io.Reader) (err error) {
+func (p *parser) Parse(r io.Reader) (err error) {
 	cr := newChecksumReader(r)
 
 	if err = readMagicString(cr); err != nil {
@@ -188,7 +192,7 @@ func readVersionNumber(r io.Reader) (int, error) {
 	return ival, nil
 }
 
-func (p *Parser) readDatabase(r io.Reader) error {
+func (p *parser) readDatabase(r io.Reader) error {
 	// Might have read the 0xFE byte already in the last readKeyValuePair call
 	if p.scratch[0] != 0xFE {
 		_, err := io.ReadFull(r, p.scratch[0:1])
@@ -213,7 +217,7 @@ func (p *Parser) readDatabase(r io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readLen(r io.Reader) (int64, bool, error) {
+func (p *parser) readLen(r io.Reader) (int64, bool, error) {
 	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return -1, false, err
@@ -243,7 +247,7 @@ func (p *Parser) readLen(r io.Reader) (int64, bool, error) {
 	}
 }
 
-func (p *Parser) readDoubleValue(r io.Reader) (float64, error) {
+func (p *parser) readDoubleValue(r io.Reader) (float64, error) {
 	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return 0, err
@@ -278,7 +282,7 @@ func readBytes(r io.Reader, length int64) ([]byte, error) {
 	return bytes, nil
 }
 
-func (p *Parser) readLZFString(r io.Reader) ([]byte, error) {
+func (p *parser) readLZFString(r io.Reader) ([]byte, error) {
 	clen, _, err := p.readLen(r)
 	if err != nil {
 		return nil, err
@@ -297,7 +301,7 @@ func (p *Parser) readLZFString(r io.Reader) ([]byte, error) {
 	return lzfDecompress(cdata, ulen), nil
 }
 
-func (p *Parser) readString(r io.Reader) (interface{}, error) {
+func (p *parser) readString(r io.Reader) (interface{}, error) {
 	l, e, err := p.readLen(r)
 	if err != nil {
 		return nil, err
@@ -342,7 +346,7 @@ func (p *Parser) readString(r io.Reader) (interface{}, error) {
 	return bytes, nil
 }
 
-func (p *Parser) readKeyValuePair(r io.Reader) error {
+func (p *parser) readKeyValuePair(r io.Reader) error {
 	_, err := io.ReadFull(r, p.scratch[0:1])
 	if err != nil {
 		return err

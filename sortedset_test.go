@@ -27,12 +27,11 @@ func TestReadSortedSet(t *testing.T) {
 	br.WriteString("62")
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "zset", p.readSortedSet)
 
@@ -40,10 +39,10 @@ func TestReadSortedSet(t *testing.T) {
 	i := 0
 	for !stop {
 		select {
-		case md := <-p.ctx.SortedSetMetadataCh:
+		case md := <-ctx.SortedSetMetadataCh:
 			equals(t, "zset", DataToString(md.Key))
 			equals(t, int64(2), md.Len)
-		case d := <-p.ctx.SortedSetEntriesCh:
+		case d := <-ctx.SortedSetEntriesCh:
 			v := DataToString(d.Value)
 			switch i {
 			case 0:
@@ -65,7 +64,7 @@ func TestReadSortedSet(t *testing.T) {
 func TestReadSortedSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -77,7 +76,7 @@ func TestReadSortedSetEncodedLen(t *testing.T) {
 	br.WriteByte(0xC0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readSortedSet(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
@@ -89,15 +88,14 @@ func TestReadSortedSetNoEntryKey(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SortedSetMetadataCh
+		md := <-ctx.SortedSetMetadataCh
 		equals(t, "zset", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -115,15 +113,14 @@ func TestReadSortedSetNoEntryScore(t *testing.T) {
 	br.WriteString("a")
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SortedSetMetadataCh
+		md := <-ctx.SortedSetMetadataCh
 		equals(t, "zset", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -148,22 +145,21 @@ func TestReadSortedSetInZipList(t *testing.T) {
 	br.WriteString("43.2")
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "zset", p.readSortedSetInZipList)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.SortedSetMetadataCh:
+		case md := <-ctx.SortedSetMetadataCh:
 			equals(t, "zset", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.SortedSetEntriesCh:
+		case d := <-ctx.SortedSetEntriesCh:
 			v := DataToString(d.Value)
 			equals(t, "foobar", v)
 			equals(t, 43.2, d.Score)
@@ -213,12 +209,11 @@ func TestReadSortedSetInZipListIntScore(t *testing.T) {
 	br.Write([]byte{1, 1})
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "zset", p.readSortedSetInZipList)
 
@@ -226,10 +221,10 @@ func TestReadSortedSetInZipListIntScore(t *testing.T) {
 	i := 0
 	for !stop {
 		select {
-		case md := <-p.ctx.SortedSetMetadataCh:
+		case md := <-ctx.SortedSetMetadataCh:
 			equals(t, "zset", DataToString(md.Key))
 			equals(t, int64(6), md.Len)
-		case d := <-p.ctx.SortedSetEntriesCh:
+		case d := <-ctx.SortedSetEntriesCh:
 			v := DataToString(d.Value)
 			switch i {
 			case 0:
@@ -261,7 +256,7 @@ func TestReadSortedSetInZipListIntScore(t *testing.T) {
 func TestReadSortedSetInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readSortedSetInZipList(KeyObject{Key: []byte("zset")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -282,15 +277,14 @@ func TestReadSortedSetInZipListWrongScore(t *testing.T) {
 	br.WriteString("foobar")
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SortedSetMetadataCh: make(chan SortedSetMetadata, 1),
-			SortedSetEntriesCh:  make(chan SortedSetEntry, 1),
-		},
-	)
+	ctx := ParserContext{
+		SortedSetMetadataCh: make(chan SortedSetMetadata),
+		SortedSetEntriesCh:  make(chan SortedSetEntry),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SortedSetMetadataCh
+		md := <-ctx.SortedSetMetadataCh
 		equals(t, "zset", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()

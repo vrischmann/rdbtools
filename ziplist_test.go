@@ -14,7 +14,7 @@ func TestReadZipListStringLengthLte63(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -44,7 +44,7 @@ func TestReadZipListStringLengthLte16383(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -77,7 +77,7 @@ func TestReadZipListStringLengthGte16384(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -110,7 +110,7 @@ func TestReadZipListInt16(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -139,7 +139,7 @@ func TestReadZipListInt32(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -168,7 +168,7 @@ func TestReadZipListInt64(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -197,7 +197,7 @@ func TestReadZipListInt24(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -226,7 +226,7 @@ func TestReadZipListInt8(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -255,7 +255,7 @@ func TestReadZipListInt4(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	br.Write([]byte{0, 0, 0, 0}) // zlBytes
 	br.Write([]byte{0, 0, 0, 0}) // zlTail
@@ -281,7 +281,7 @@ func TestReadZipListInt4(t *testing.T) {
 
 func TestReadZipListNoZlBytes(t *testing.T) {
 	var buffer bytes.Buffer
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readZipList(bufio.NewReader(&buffer), nil, nil)
 	equals(t, io.EOF, err)
 }
@@ -290,7 +290,7 @@ func TestReadZipListNoZlTail(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	br.Flush()
@@ -303,7 +303,7 @@ func TestReadZipListNoZlLen(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -317,7 +317,7 @@ func TestReadZipListNoPrevEntryLength(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -338,7 +338,7 @@ func TestReadZipListPrevEntryLengthLte253(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -360,7 +360,7 @@ func TestReadZipListPrevEntryLengthEq254(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -382,7 +382,7 @@ func TestReadZipListPrevEntryLengthEq254NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -403,7 +403,7 @@ func TestReadZipListPrevEntryLengthUnexpected(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -424,7 +424,7 @@ func TestReadZipListStringLengthLte63NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -446,7 +446,7 @@ func TestReadZipListStringLengthLte16383NoAdditionalByte(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -468,7 +468,7 @@ func TestReadZipListStringLengthLte16383NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -491,7 +491,7 @@ func TestReadZipListStringLengthGte16384NoAdditionalBytes(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -513,7 +513,7 @@ func TestReadZipListStringLengthGte16384NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -536,7 +536,7 @@ func TestReadZipListInt16NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -558,7 +558,7 @@ func TestReadZipListInt32NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -580,7 +580,7 @@ func TestReadZipListInt64NoData(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -602,7 +602,7 @@ func TestReadZipListInt24NoAdditionalBytes(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -624,7 +624,7 @@ func TestReadZipListInt8NoAdditionalByte(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -646,7 +646,7 @@ func TestReadZipListOnLenCallbackError(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))
@@ -667,7 +667,7 @@ func TestReadZipListOnElementCallbackError(t *testing.T) {
 	var buffer bytes.Buffer
 
 	br := bufio.NewWriter(&buffer)
-	p := NewParser(ParserContext{})
+	p := &parser{}
 
 	binary.Write(br, binary.LittleEndian, int32(1))
 	binary.Write(br, binary.LittleEndian, int32(1))

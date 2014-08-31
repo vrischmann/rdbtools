@@ -18,7 +18,7 @@ func (m ListMetadata) String() string {
 	return fmt.Sprintf("ListMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
 }
 
-func (p *Parser) readList(key KeyObject, r io.Reader) error {
+func (p *parser) readList(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (p *Parser) readList(key KeyObject, r io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readListInZipList(key KeyObject, r io.Reader) error {
+func (p *parser) readListInZipList(key KeyObject, r io.Reader) error {
 	data, err := p.readString(r)
 	if err != nil {
 		return err

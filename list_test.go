@@ -22,12 +22,11 @@ func TestReadList(t *testing.T) {
 	br.WriteByte('a')
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			ListMetadataCh: make(chan ListMetadata, 1),
-			ListDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "list", p.readList)
 
@@ -48,7 +47,7 @@ func TestReadList(t *testing.T) {
 func TestReadListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -61,7 +60,7 @@ func TestReadListEncodedLen(t *testing.T) {
 	br.WriteByte(0xC0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
@@ -74,15 +73,11 @@ func TestReadListNoElementData(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			ListMetadataCh: make(chan ListMetadata, 1),
-			ListDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{ListMetadataCh: make(chan ListMetadata)}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.ListMetadataCh
+		md := <-ctx.ListMetadataCh
 		equals(t, "list", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -107,22 +102,21 @@ func TestReadListInZipList(t *testing.T) {
 
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			ListMetadataCh: make(chan ListMetadata, 1),
-			ListDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		ListMetadataCh: make(chan ListMetadata),
+		ListDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "list", p.readListInZipList)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.ListMetadataCh:
+		case md := <-ctx.ListMetadataCh:
 			equals(t, "list", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.ListDataCh:
+		case d := <-ctx.ListDataCh:
 			equals(t, "foobar", DataToString(d))
 		case <-end:
 			stop = true
@@ -133,7 +127,7 @@ func TestReadListInZipList(t *testing.T) {
 func TestReadListInZipListNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readListInZipList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -145,7 +139,7 @@ func TestReadListInZipListFail(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readListInZipList(KeyObject{Key: []byte("list")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }

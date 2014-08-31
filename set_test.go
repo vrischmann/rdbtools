@@ -22,22 +22,21 @@ func TestReadSet(t *testing.T) {
 	br.WriteByte('a')
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "set", p.readSet)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.SetMetadataCh:
+		case md := <-ctx.SetMetadataCh:
 			equals(t, "set", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.SetDataCh:
+		case d := <-ctx.SetDataCh:
 			equals(t, "a", DataToString(d))
 		case <-end:
 			stop = true
@@ -48,7 +47,7 @@ func TestReadSet(t *testing.T) {
 func TestReadSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -60,7 +59,7 @@ func TestReadSetEncodedLen(t *testing.T) {
 	br.WriteByte(0xC0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, ErrUnexpectedEncodedLength, err)
 }
@@ -72,12 +71,11 @@ func TestReadSetNoEntry(t *testing.T) {
 	br.WriteByte(1)
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata, 1),
+		SetDataCh:     make(chan interface{}, 1),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
 		md := <-p.ctx.SetMetadataCh
@@ -100,22 +98,21 @@ func TestReadInt16Set(t *testing.T) {
 	br.Write([]byte{1, 0})       // value
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "set", p.readIntSet)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.SetMetadataCh:
+		case md := <-ctx.SetMetadataCh:
 			equals(t, "set", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.SetDataCh:
+		case d := <-ctx.SetDataCh:
 			equals(t, int16(1), d)
 		case <-end:
 			stop = true
@@ -134,22 +131,21 @@ func TestReadInt32Set(t *testing.T) {
 	br.Write([]byte{1, 0, 0, 0}) // value
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "set", p.readIntSet)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.SetMetadataCh:
+		case md := <-ctx.SetMetadataCh:
 			equals(t, "set", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.SetDataCh:
+		case d := <-ctx.SetDataCh:
 			equals(t, int32(1), d)
 		case <-end:
 			stop = true
@@ -168,22 +164,21 @@ func TestReadInt64Set(t *testing.T) {
 	br.Write([]byte{1, 0, 0, 0, 0, 0, 0, 0}) // value
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go readAndNotify(t, &buffer, "set", p.readIntSet)
 
 	stop := false
 	for !stop {
 		select {
-		case md := <-p.ctx.SetMetadataCh:
+		case md := <-ctx.SetMetadataCh:
 			equals(t, "set", DataToString(md.Key))
 			equals(t, int64(1), md.Len)
-		case d := <-p.ctx.SetDataCh:
+		case d := <-ctx.SetDataCh:
 			equals(t, int64(1), d)
 		case <-end:
 			stop = true
@@ -194,7 +189,7 @@ func TestReadInt64Set(t *testing.T) {
 func TestReadIntSetNoData(t *testing.T) {
 	var buffer bytes.Buffer
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -207,7 +202,7 @@ func TestReadIntSetNoEncoding(t *testing.T) {
 	br.WriteByte(0)
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -221,7 +216,7 @@ func TestReadIntSetNoLength(t *testing.T) {
 	br.Write([]byte{0, 0, 0, 0})
 	br.Flush()
 
-	p := NewParser(ParserContext{})
+	p := &parser{}
 	err := p.readIntSet(KeyObject{Key: []byte("set")}, bufio.NewReader(&buffer))
 	equals(t, io.EOF, err)
 }
@@ -236,15 +231,14 @@ func TestReadIntSetNoInt16Value(t *testing.T) {
 	br.Write([]byte{1, 0, 0, 0})
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SetMetadataCh
+		md := <-ctx.SetMetadataCh
 		equals(t, "set", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -263,15 +257,14 @@ func TestReadIntSetNoInt32Value(t *testing.T) {
 	br.Write([]byte{1, 0, 0, 0})
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SetMetadataCh
+		md := <-ctx.SetMetadataCh
 		equals(t, "set", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
@@ -290,15 +283,14 @@ func TestReadIntSetNoInt64Value(t *testing.T) {
 	br.Write([]byte{1, 0, 0, 0})
 	br.Flush()
 
-	p := NewParser(
-		ParserContext{
-			SetMetadataCh: make(chan SetMetadata, 1),
-			SetDataCh:     make(chan interface{}, 1),
-		},
-	)
+	ctx := ParserContext{
+		SetMetadataCh: make(chan SetMetadata),
+		SetDataCh:     make(chan interface{}),
+	}
+	p := &parser{ctx: ctx}
 
 	go func() {
-		md := <-p.ctx.SetMetadataCh
+		md := <-ctx.SetMetadataCh
 		equals(t, "set", DataToString(md.Key))
 		equals(t, int64(1), md.Len)
 	}()
