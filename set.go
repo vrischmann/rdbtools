@@ -4,8 +4,20 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
+
+// Represents the metadata of a set, which is the key and the set length
+type SetMetadata struct {
+	Key KeyObject
+	Len int64
+}
+
+// Returns a visualization of the set metadata
+func (m SetMetadata) String() string {
+	return fmt.Sprintf("SetMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
+}
 
 func (p *Parser) readSet(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)

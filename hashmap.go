@@ -8,6 +8,17 @@ import (
 	"io"
 )
 
+// Represents the metadata of a hash, which is the key and the hash length
+type HashMetadata struct {
+	Key KeyObject
+	Len int64
+}
+
+// Returns a visualization of the hash metadata
+func (m HashMetadata) String() string {
+	return fmt.Sprintf("HashMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
+}
+
 // Represents an entry in a hash
 type HashEntry struct {
 	Key   interface{}

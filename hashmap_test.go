@@ -8,6 +8,11 @@ import (
 	"testing"
 )
 
+func TestHashMetadataString(t *testing.T) {
+	md := HashMetadata{Key: KeyObject{Key: "foobar"}, Len: 10}
+	equals(t, "HashMetadata{Key: foobar, Len: 10}", md.String())
+}
+
 func TestReadHashMap(t *testing.T) {
 	var buffer bytes.Buffer
 	br := bufio.NewWriter(&buffer)

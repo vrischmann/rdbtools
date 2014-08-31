@@ -8,11 +8,24 @@ import (
 	"strconv"
 )
 
+// Represents the metadata of a sorted set, which is the key and the sorted set length
+type SortedSetMetadata struct {
+	Key KeyObject
+	Len int64
+}
+
+// Returns a visualization of the sorted set metadata
+func (m SortedSetMetadata) String() string {
+	return fmt.Sprintf("SortedSetMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
+}
+
+// Represents an entry in a sorted set.
 type SortedSetEntry struct {
 	Value interface{}
 	Score float64
 }
 
+// Returns a visualization of a sorted set entry
 func (e SortedSetEntry) String() string {
 	return fmt.Sprintf("SortedSetEntry{Value: %s, Score: %0.4f}", DataToString(e.Value), e.Score)
 }

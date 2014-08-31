@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+func TestListMetadataString(t *testing.T) {
+	md := ListMetadata{Key: KeyObject{Key: "foobar"}, Len: 10}
+	equals(t, "ListMetadata{Key: foobar, Len: 10}", md.String())
+}
+
 func TestReadList(t *testing.T) {
 	var buffer bytes.Buffer
 

@@ -3,8 +3,20 @@ package rdbtools
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 )
+
+// Represents the metadata of a list, which is the key and the list length
+type ListMetadata struct {
+	Key KeyObject
+	Len int64
+}
+
+// Returns a visualization of the list metadata
+func (m ListMetadata) String() string {
+	return fmt.Sprintf("ListMetadata{Key: %s, Len: %d}", DataToString(m.Key), m.Len)
+}
 
 func (p *Parser) readList(key KeyObject, r io.Reader) error {
 	l, e, err := p.readLen(r)

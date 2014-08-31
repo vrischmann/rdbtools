@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+func TestSetMetadataString(t *testing.T) {
+	md := SetMetadata{Key: KeyObject{Key: "foobar"}, Len: 10}
+	equals(t, "SetMetadata{Key: foobar, Len: 10}", md.String())
+}
+
 func TestReadSet(t *testing.T) {
 	var buffer bytes.Buffer
 

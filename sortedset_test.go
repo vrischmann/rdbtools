@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+func TestSortedSetMetadataString(t *testing.T) {
+	md := SortedSetMetadata{Key: KeyObject{Key: "foobar"}, Len: 10}
+	equals(t, "SortedSetMetadata{Key: foobar, Len: 10}", md.String())
+}
+
 func TestReadSortedSet(t *testing.T) {
 	var buffer bytes.Buffer
 	br := bufio.NewWriter(&buffer)
