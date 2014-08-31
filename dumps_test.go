@@ -1089,6 +1089,4 @@ func TestDumpZipMapWithBigValues(t *testing.T) {
 			break
 		}
 	}
-
-	// fmt.Println(res)
 }
