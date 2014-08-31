@@ -82,7 +82,7 @@ func (p *Parser) readZipList(r io.Reader, onLenCallback zipListOnLenCallback, on
 		} else if (flag & 0xC0) == 0x80 {
 			// String with length >= 16384 bytes
 			var tmp int32
-			if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+			if err := binary.Read(r, binary.BigEndian, &tmp); err != nil {
 				return err
 			}
 

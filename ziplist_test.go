@@ -85,7 +85,7 @@ func TestReadZipListStringLengthGte16384(t *testing.T) {
 
 	br.WriteByte(0)    // len prev entry
 	br.WriteByte(0x80) // Special flag
-	binary.Write(br, binary.LittleEndian, int32(30000))
+	binary.Write(br, binary.BigEndian, int32(30000))
 	for i := 0; i < 5000; i++ {
 		br.WriteString("foobar")
 	}
