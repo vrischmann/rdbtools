@@ -11,7 +11,7 @@ It comes with an extensive test suite.
 Documentation
 -------------
 
-The reference is available [here](http://godoc.org/github.com/vrischmann/rdbtools]). Right now it's not really useful, but it will be improved.
+The reference is available [here](http://godoc.org/github.com/vrischmann/rdbtools). Right now it's not really useful, but it will be improved.
 
 License
 -------
